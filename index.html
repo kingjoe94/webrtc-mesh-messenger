@@ -102,7 +102,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 <script>
 const MAX_TEXT_LENGTH = 500;
 const QR_CHUNK_SIZE = 700;
-const APP_VERSION = "2026-06-02.3-chunked-qr";
+const APP_VERSION = "2026-06-02.4-continuous-qr-scan";
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const $ = (id) => document.getElementById(id);
 const views = ["startPanel","hostOfferPanel","hostAnswerPanel","guestOfferPanel","guestAnswerPanel"];
@@ -213,8 +213,8 @@ function startGuest(){
 
 async function guestAccept(raw){
   try{
-    stopScanner();
     const offer = await unpackSignalCode(raw, "offer");
+    stopScanner();
     if (offer.kind !== "offer") throw new Error("招待コードではありません。");
     peerPublicJwk = offer.publicJwk;
     createPeer(false);
@@ -228,19 +228,23 @@ async function guestAccept(raw){
     makeQr("guestQr", code);
     show("guestAnswerPanel");
     addMessage("system",`${offer.deviceId} の招待を読み込みました。返信QRを相手に見せてください。`);
+    return true;
   }catch(error){ addMessage("system",`招待コードを読めません: ${error.message}`); }
+  return false;
 }
 
 async function hostAccept(raw){
   try{
-    stopScanner();
     const answer = await unpackSignalCode(raw, "answer");
+    stopScanner();
     if (answer.kind !== "answer") throw new Error("返信コードではありません。");
     peerPublicJwk = answer.publicJwk;
     await pc.setRemoteDescription(answer.sdp);
     await deriveSharedKey(peerPublicJwk);
     addMessage("system",`${answer.deviceId} の返信を読み込みました。接続を確立しています。`);
+    return true;
   }catch(error){ addMessage("system",`返信コードを読めません: ${error.message}`); }
+  return false;
 }
 
 function createPeer(isHost){
@@ -395,7 +399,7 @@ function chunkText(text, size){
 
 async function unpackSignalCode(raw, expectedKind){
   const assembled = collectQrChunk(raw, expectedKind);
-  if (!assembled) throw new Error("分割QRを受け取りました。残りのQRも読み取ってください。");
+  if (!assembled) throw new Error("分割QRを受け取りました。カメラは起動したままなので、表示側で次のQRを出してください。");
   return unpack(assembled);
 }
 
@@ -431,13 +435,15 @@ async function startScanner(containerId, onResult){
   const container = $(containerId);
   container.innerHTML = '<p class="notice">カメラ起動中です。QR全体が枠内に入るように少し離して読み取ってください。</p><div class="scanner"><video playsinline muted></video><div class="reticle"></div></div>';
   const video = container.querySelector("video");
+  let lastCode = "";
+  let lastReadAt = 0;
   try{
     scanStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"environment" } });
     video.srcObject = scanStream;
     await video.play();
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d", { willReadFrequently:true });
-    const tick = () => {
+    const tick = async () => {
       if (video.readyState === video.HAVE_ENOUGH_DATA) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -445,9 +451,15 @@ async function startScanner(containerId, onResult){
         const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const code = jsQR(image.data, image.width, image.height);
         if (code?.data) {
-          stopScanner();
-          onResult(code.data);
-          if (code.data.startsWith("MM1:")) setTimeout(() => startScanner(containerId, onResult), 500);
+          const now = Date.now();
+          if (code.data !== lastCode || now - lastReadAt > 1600) {
+            lastCode = code.data;
+            lastReadAt = now;
+            const done = await onResult(code.data);
+            if (done) return;
+          }
+        }
+        if (!scanStream) {
           return;
         }
       }
