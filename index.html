@@ -100,10 +100,12 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 
 <script>
 const MAX_TEXT_LENGTH = 500;
+const QR_CHUNK_SIZE = 700;
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const $ = (id) => document.getElementById(id);
 const views = ["startPanel","hostOfferPanel","hostAnswerPanel","guestOfferPanel","guestAnswerPanel"];
 let pc, channel, role, identity, peerPublicJwk, sharedKey, scanStream, scanRAF;
+const chunkScans = new Map();
 
 const els = {
   status: $("status"), deviceId: $("deviceId"), messages: $("messages"),
@@ -209,7 +211,7 @@ function startGuest(){
 async function guestAccept(raw){
   try{
     stopScanner();
-    const offer = await unpack(raw);
+    const offer = await unpackSignalCode(raw, "offer");
     if (offer.kind !== "offer") throw new Error("招待コードではありません。");
     peerPublicJwk = offer.publicJwk;
     createPeer(false);
@@ -229,7 +231,7 @@ async function guestAccept(raw){
 async function hostAccept(raw){
   try{
     stopScanner();
-    const answer = await unpack(raw);
+    const answer = await unpackSignalCode(raw, "answer");
     if (answer.kind !== "answer") throw new Error("返信コードではありません。");
     peerPublicJwk = answer.publicJwk;
     await pc.setRemoteDescription(answer.sdp);
@@ -343,7 +345,83 @@ function makeQr(id, text){
   const el = $(id);
   el.innerHTML = "";
   const size = Math.max(260, Math.min(360, Math.floor(window.innerWidth - 64)));
-  new QRCode(el, { text, width:size, height:size, correctLevel:QRCode.CorrectLevel.L });
+  const chunks = chunkText(text, QR_CHUNK_SIZE);
+  let index = 0;
+
+  const render = () => {
+    el.innerHTML = "";
+    const payload = chunks.length === 1 ? text : `MM1:${index + 1}:${chunks.length}:${chunks[index]}`;
+    const caption = document.createElement("p");
+    caption.className = "notice";
+    caption.textContent = chunks.length === 1
+      ? "このQRを相手のアプリ内スキャナーで読み取ってください。"
+      : `分割QR ${index + 1}/${chunks.length}。相手側で全て読み取ってください。`;
+    el.append(caption);
+    const box = document.createElement("div");
+    box.className = "qr";
+    el.append(box);
+    new QRCode(box, { text:payload, width:size, height:size, correctLevel:QRCode.CorrectLevel.L });
+
+    if (chunks.length > 1) {
+      const controls = document.createElement("div");
+      controls.className = "actions";
+      const prev = document.createElement("button");
+      prev.type = "button";
+      prev.className = "secondary";
+      prev.textContent = "前のQR";
+      prev.disabled = index === 0;
+      prev.onclick = () => { index -= 1; render(); };
+      const next = document.createElement("button");
+      next.type = "button";
+      next.textContent = index === chunks.length - 1 ? "最後のQR" : "次のQR";
+      next.disabled = index === chunks.length - 1;
+      next.onclick = () => { index += 1; render(); };
+      controls.append(prev, next);
+      el.append(controls);
+    }
+  };
+
+  render();
+}
+
+function chunkText(text, size){
+  const chunks = [];
+  for (let index = 0; index < text.length; index += size) chunks.push(text.slice(index, index + size));
+  return chunks;
+}
+
+async function unpackSignalCode(raw, expectedKind){
+  const assembled = collectQrChunk(raw, expectedKind);
+  if (!assembled) throw new Error("分割QRを受け取りました。残りのQRも読み取ってください。");
+  return unpack(assembled);
+}
+
+function collectQrChunk(raw, expectedKind){
+  const text = raw.trim();
+  if (!text.startsWith("MM1:")) return text;
+  const parts = text.split(":");
+  if (parts.length < 4) throw new Error("分割QRの形式が不正です。");
+  const index = Number(parts[1]);
+  const total = Number(parts[2]);
+  const chunk = parts.slice(3).join(":");
+  if (!Number.isInteger(index) || !Number.isInteger(total) || index < 1 || total < 1 || index > total) {
+    throw new Error("分割QRの番号が不正です。");
+  }
+  const key = expectedKind;
+  const scan = chunkScans.get(key) || { total, chunks:new Map() };
+  scan.total = total;
+  scan.chunks.set(index, chunk);
+  chunkScans.set(key, scan);
+  addMessage("system",`分割QR ${index}/${total} を読み取りました。残り ${total - scan.chunks.size} 枚です。`);
+  if (scan.chunks.size < total) return "";
+  let assembled = "";
+  for (let next = 1; next <= total; next += 1) {
+    const part = scan.chunks.get(next);
+    if (!part) return "";
+    assembled += part;
+  }
+  chunkScans.delete(key);
+  return assembled;
 }
 
 async function startScanner(containerId, onResult){
@@ -366,6 +444,7 @@ async function startScanner(containerId, onResult){
         if (code?.data) {
           stopScanner();
           onResult(code.data);
+          if (code.data.startsWith("MM1:")) setTimeout(() => startScanner(containerId, onResult), 500);
           return;
         }
       }
