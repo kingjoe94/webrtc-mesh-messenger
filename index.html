@@ -102,7 +102,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 <script>
 const MAX_TEXT_LENGTH = 500;
 const QR_CHUNK_SIZE = 700;
-const APP_VERSION = "2026-06-02.4-continuous-qr-scan";
+const APP_VERSION = "2026-06-02.5-chunk-progress";
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const $ = (id) => document.getElementById(id);
 const views = ["startPanel","hostOfferPanel","hostAnswerPanel","guestOfferPanel","guestAnswerPanel"];
@@ -214,6 +214,7 @@ function startGuest(){
 async function guestAccept(raw){
   try{
     const offer = await unpackSignalCode(raw, "offer");
+    if (!offer) return false;
     stopScanner();
     if (offer.kind !== "offer") throw new Error("招待コードではありません。");
     peerPublicJwk = offer.publicJwk;
@@ -236,6 +237,7 @@ async function guestAccept(raw){
 async function hostAccept(raw){
   try{
     const answer = await unpackSignalCode(raw, "answer");
+    if (!answer) return false;
     stopScanner();
     if (answer.kind !== "answer") throw new Error("返信コードではありません。");
     peerPublicJwk = answer.publicJwk;
@@ -399,7 +401,7 @@ function chunkText(text, size){
 
 async function unpackSignalCode(raw, expectedKind){
   const assembled = collectQrChunk(raw, expectedKind);
-  if (!assembled) throw new Error("分割QRを受け取りました。カメラは起動したままなので、表示側で次のQRを出してください。");
+  if (!assembled) return null;
   return unpack(assembled);
 }
 
