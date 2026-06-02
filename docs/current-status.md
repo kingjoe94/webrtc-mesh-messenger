@@ -1,0 +1,100 @@
+# Current Status
+
+## Last Verified MVP Flow
+
+Verified on 2026-06-02:
+
+1. Host opens the GitHub Pages app.
+2. Host taps `招待する`.
+3. Guest scans the host invite QR with the phone's standard camera.
+4. The invite URL opens the app on the guest device.
+5. Guest automatically loads the `offer` from the URL.
+6. Guest shows a reply QR.
+7. Host taps `2. 返信を読む` and scans the guest reply QR in the app.
+8. WebRTC DataChannel opens.
+9. Text message delivery works.
+
+Working app version:
+
+```txt
+2026-06-02.10-camera-offer-url
+```
+
+Current URL:
+
+```txt
+https://kingjoe94.github.io/webrtc-mesh-messenger/
+```
+
+## Current Architecture
+
+- App hosting: GitHub Pages
+- Invite QR: standard camera opens an app URL containing the compressed WebRTC offer
+- Reply QR: host reads the compressed WebRTC answer with the in-app scanner
+- QR libraries: vendored in `vendor/`
+- Message transport: WebRTC DataChannel
+- Message body server storage: none
+- Signaling server: none in the current flow
+
+## Confirmed Issue: Two QR Reads Are Cumbersome
+
+The current no-signaling-server flow requires two manual exchanges:
+
+1. Host offer QR
+2. Guest answer QR
+
+This is expected for serverless WebRTC because both sides must exchange connection descriptions. It works, but the UX is noticeably cumbersome.
+
+Potential improvement:
+
+- Add a minimal signaling provider that carries only `offer`, `answer`, and ICE candidates.
+- Keep message bodies off the provider.
+- Then the QR can contain only a short room URL or invite token.
+- The guest opens the URL, and the answer can be returned through the signaling provider without a second QR scan.
+
+Tradeoff:
+
+- Much better UX.
+- No need for the second QR.
+- Requires a small external signaling component.
+
+## Confirmed Issue: Reload Requires Reconnection
+
+If either side reloads or closes the page after connecting, the WebRTC peer connection is lost and the users must reconnect.
+
+This is expected because:
+
+- WebRTC connection state is in memory.
+- SDP/ICE connection details are ephemeral.
+- Browser pages cannot receive inbound connections after reload without a fresh handshake.
+
+Potential improvement:
+
+- Store friend identity and public key locally.
+- Add a `SignalingProvider` for remote reconnection.
+- On page load, rejoin presence and automatically attempt a fresh WebRTC handshake with known friends.
+
+Tradeoff:
+
+- Better recovery after reload.
+- Requires a provider and friend/session state.
+- Still does not store message bodies on the server.
+
+## Recommended Next Step
+
+Keep the current QR-only flow as the serverless baseline, then prototype a minimal `SignalingProvider` as Phase 2.
+
+The provider should only handle:
+
+- room creation
+- presence
+- offer/answer/ICE exchange
+- short-lived cleanup
+
+The provider should not handle:
+
+- plaintext message bodies
+- encrypted message body storage for this phase
+- user accounts
+- public friend search
+
