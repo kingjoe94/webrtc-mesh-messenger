@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mesh Messenger MVP</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js"></script>
+<style>
+:root{font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f2efe8;color:#202124}
+*{box-sizing:border-box}body{margin:0}.app{width:min(920px,calc(100% - 28px));margin:0 auto;padding:28px 0}.panel{background:#fffaf2;border:1px solid #ded5c4;border-radius:8px;padding:18px;box-shadow:0 12px 34px rgba(68,53,30,.1)}.panel+.panel{margin-top:14px}
+h1{margin:0;font-size:28px;letter-spacing:0}h2{margin:0 0 8px;font-size:20px;letter-spacing:0}p{margin:8px 0 0;color:#635d52;line-height:1.55}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.notice{border:1px solid #d8c3a4;border-radius:6px;background:#fff2d8;color:#634717;padding:10px 12px;font-weight:700}
+button{border:0;border-radius:6px;background:#245c74;color:white;font:inherit;font-weight:800;padding:11px 14px;cursor:pointer}button.secondary{background:#74624a}button:disabled{opacity:.45;cursor:not-allowed}
+textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:white;color:#202124;font:inherit;padding:10px}textarea{min-height:96px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;word-break:break-all}
+.status{display:inline-block;border-radius:999px;background:#eee3d0;color:#57462f;padding:6px 10px;font-size:13px;font-weight:800}.status.ok{background:#d8f0dd;color:#215c32}.status.bad{background:#f5d7d1;color:#7a271d}
+.qr{width:fit-content;background:white;padding:12px;border-radius:6px;margin:12px 0}.qr canvas,.qr img{display:block}.hidden{display:none!important}.muted{color:#746f66;font-size:13px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.identity{margin-top:12px;padding:12px;border:1px solid #e2d8c7;border-radius:6px;background:#fbf4e8}.chat{min-height:360px;display:grid;grid-template-rows:1fr auto;gap:12px}.messages{min-height:260px;overflow:auto;display:flex;flex-direction:column;gap:8px;border:1px solid #e3d9c9;border-radius:6px;background:white;padding:12px}.msg{max-width:min(72ch,88%);border-radius:8px;padding:9px 11px;line-height:1.45;overflow-wrap:anywhere}.local{align-self:flex-end;background:#dcebf0}.remote{align-self:flex-start;background:#efe7d8}.system{align-self:center;max-width:100%;background:#f5f1ea;color:#70685d;font-size:13px}.composer{display:flex;gap:8px}.composer input{flex:1}.scanner{position:relative;margin-top:10px;border:1px solid #d8ccba;border-radius:6px;overflow:hidden;background:#111}.scanner video{width:100%;display:block}.reticle{position:absolute;inset:18%;border:2px solid #3ba7bd;border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,.34)}
+@media(max-width:760px){.app{width:min(100% - 18px,920px);padding:14px 0}.grid{grid-template-columns:1fr}.composer{display:grid}button{width:100%}}
+</style>
+</head>
+<body>
+<main class="app">
+  <section class="panel">
+    <div class="row">
+      <h1>Mesh Messenger MVP</h1>
+      <span id="status" class="status">未接続</span>
+    </div>
+    <p>対面でQRを交換し、WebRTC DataChannelで直接つなぐ単一HTMLの試作です。本文は送信前にAES-GCMで暗号化します。</p>
+    <p class="notice">QRはスマホ標準カメラではなく、このアプリ内の「参加する」または「返信を読む」で読み取ります。標準カメラで読むと検索になるだけです。</p>
+    <p id="runtimeWarning" class="notice hidden"></p>
+    <div class="identity">
+      <div class="muted">自分のID</div>
+      <div class="row">
+        <strong id="deviceId"></strong>
+        <button class="secondary" id="resetIdentity" type="button">ID再生成</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="startPanel" class="panel">
+    <h2>接続方法</h2>
+    <p>片方が招待、もう片方が参加を選びます。QRはこのアプリ内のスキャナーで読みます。カメラが使えない場合はコードをコピーして貼り付けてください。</p>
+    <div class="actions">
+      <button id="hostStart" type="button">招待する</button>
+      <button id="guestStart" class="secondary" type="button">参加する</button>
+    </div>
+  </section>
+
+  <section id="hostOfferPanel" class="panel hidden">
+    <h2>1. 招待コードを見せる</h2>
+    <p>このQRを、相手が開いている同じアプリの「参加する」画面で読み取ってもらいます。スマホ標準カメラでは読み込めません。</p>
+    <div id="hostQr" class="qr"></div>
+    <textarea id="hostCode" readonly></textarea>
+    <div class="actions">
+      <button data-copy="hostCode" type="button">コードをコピー</button>
+      <button id="hostScanAnswer" class="secondary" type="button">2. 返信を読む</button>
+    </div>
+  </section>
+
+  <section id="hostAnswerPanel" class="panel hidden">
+    <h2>2. 返信コードを読み取る</h2>
+    <p class="notice">相手の返信QRは、この画面のスキャナーで読み取ります。標準カメラは使いません。</p>
+    <div id="hostScanner"></div>
+    <textarea id="hostAnswerPaste" placeholder="返信コードを貼り付け"></textarea>
+    <div class="actions">
+      <button id="hostAcceptAnswer" type="button">接続する</button>
+    </div>
+  </section>
+
+  <section id="guestOfferPanel" class="panel hidden">
+    <h2>1. 招待コードを読み取る</h2>
+    <p class="notice">招待側のQRは、この画面のスキャナーで読み取ります。標準カメラは使いません。</p>
+    <div id="guestScanner"></div>
+    <textarea id="guestOfferPaste" placeholder="招待コードを貼り付け"></textarea>
+    <div class="actions">
+      <button id="guestAcceptOffer" type="button">読み込む</button>
+    </div>
+  </section>
+
+  <section id="guestAnswerPanel" class="panel hidden">
+    <h2>2. 返信コードを見せる</h2>
+    <p>このQRを招待側に読み取ってもらいます。</p>
+    <div id="guestQr" class="qr"></div>
+    <textarea id="guestCode" readonly></textarea>
+    <div class="actions">
+      <button data-copy="guestCode" type="button">コードをコピー</button>
+    </div>
+  </section>
+
+  <section class="panel chat">
+    <div id="messages" class="messages"></div>
+    <form id="messageForm" class="composer">
+      <input id="messageInput" maxlength="500" autocomplete="off" placeholder="500文字まで">
+      <button id="sendMessage" type="submit">送信</button>
+    </form>
+  </section>
+</main>
+
+<script>
+const MAX_TEXT_LENGTH = 500;
+const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+const $ = (id) => document.getElementById(id);
+const views = ["startPanel","hostOfferPanel","hostAnswerPanel","guestOfferPanel","guestAnswerPanel"];
+let pc, channel, role, identity, peerPublicJwk, sharedKey, scanStream, scanRAF;
+
+const els = {
+  status: $("status"), deviceId: $("deviceId"), messages: $("messages"),
+  input: $("messageInput"), send: $("sendMessage"), form: $("messageForm")
+};
+
+init();
+
+async function init(){
+  showRuntimeWarning();
+  identity = await loadIdentity();
+  els.deviceId.textContent = identity.deviceId;
+  els.send.disabled = true;
+  addMessage("system","まだ接続されていません。対面でQRを交換してください。");
+}
+
+function showRuntimeWarning(){
+  const warnings = [];
+  if (!window.isSecureContext) {
+    warnings.push("スマホでカメラ読み取りを使うにはHTTPSで開く必要があります。index.htmlをファイルとして送るだけでは動かないことがあります。");
+  }
+  if (!window.QRCode || !window.jsQR) {
+    warnings.push("QRライブラリを読み込めていません。インターネット接続がある状態でHTTPS配信されたページとして開いてください。");
+  }
+  if (!navigator.mediaDevices?.getUserMedia) {
+    warnings.push("この開き方ではカメラAPIを使えません。QRの代わりにコード貼り付けを使うか、HTTPSで開いてください。");
+  }
+  if (!crypto.subtle) {
+    warnings.push("この開き方ではWeb Cryptoを使えません。HTTPSで開いてください。");
+  }
+  if (!warnings.length) return;
+  $("runtimeWarning").textContent = warnings.join(" ");
+  $("runtimeWarning").classList.remove("hidden");
+}
+
+$("hostStart").onclick = startHost;
+$("guestStart").onclick = startGuest;
+$("hostScanAnswer").onclick = () => { show("hostAnswerPanel"); startScanner("hostScanner", hostAccept); };
+$("hostAcceptAnswer").onclick = () => hostAccept($("hostAnswerPaste").value);
+$("guestAcceptOffer").onclick = () => guestAccept($("guestOfferPaste").value);
+$("resetIdentity").onclick = async () => {
+  if (!confirm("この端末のIDと鍵を再生成します。既存の友達登録とは別IDになります。")) return;
+  localStorage.removeItem("mesh-messenger:identity");
+  location.reload();
+};
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.onclick = async () => {
+    const target = $(button.dataset.copy);
+    await navigator.clipboard.writeText(target.value);
+    addMessage("system","コードをコピーしました。");
+  };
+});
+els.form.onsubmit = async (event) => {
+  event.preventDefault();
+  const text = els.input.value.trim();
+  if (!text || !sharedKey || channel?.readyState !== "open") return;
+  if (text.length > MAX_TEXT_LENGTH) return addMessage("system",`本文は${MAX_TEXT_LENGTH}文字までです。`);
+  const envelope = await encryptText(text);
+  channel.send(JSON.stringify(envelope));
+  addMessage("local", text);
+  els.input.value = "";
+};
+
+async function loadIdentity(){
+  const saved = localStorage.getItem("mesh-messenger:identity");
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    parsed.privateKey = await crypto.subtle.importKey("jwk", parsed.privateJwk, { name:"ECDH", namedCurve:"P-256" }, true, ["deriveKey"]);
+    return parsed;
+  }
+  const pair = await crypto.subtle.generateKey({ name:"ECDH", namedCurve:"P-256" }, true, ["deriveKey"]);
+  const publicJwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
+  const privateJwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
+  const deviceId = await shortHash(JSON.stringify(publicJwk));
+  const next = { deviceId, publicJwk, privateJwk, privateKey: pair.privateKey };
+  localStorage.setItem("mesh-messenger:identity", JSON.stringify({ deviceId, publicJwk, privateJwk }));
+  return next;
+}
+
+async function shortHash(text){
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(bytes)].slice(0, 8).map((b) => b.toString(16).padStart(2,"0")).join("");
+}
+
+async function startHost(){
+  role = "host";
+  createPeer(true);
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  await waitForIce();
+  const code = await pack({ v:1, kind:"offer", deviceId:identity.deviceId, publicJwk:identity.publicJwk, sdp:pc.localDescription });
+  $("hostCode").value = code;
+  makeQr("hostQr", code);
+  show("hostOfferPanel");
+}
+
+function startGuest(){
+  role = "guest";
+  show("guestOfferPanel");
+  startScanner("guestScanner", guestAccept);
+}
+
+async function guestAccept(raw){
+  try{
+    stopScanner();
+    const offer = await unpack(raw);
+    if (offer.kind !== "offer") throw new Error("招待コードではありません。");
+    peerPublicJwk = offer.publicJwk;
+    createPeer(false);
+    await pc.setRemoteDescription(offer.sdp);
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    await waitForIce();
+    await deriveSharedKey(peerPublicJwk);
+    const code = await pack({ v:1, kind:"answer", deviceId:identity.deviceId, publicJwk:identity.publicJwk, sdp:pc.localDescription });
+    $("guestCode").value = code;
+    makeQr("guestQr", code);
+    show("guestAnswerPanel");
+    addMessage("system",`${offer.deviceId} の招待を読み込みました。返信QRを相手に見せてください。`);
+  }catch(error){ addMessage("system",`招待コードを読めません: ${error.message}`); }
+}
+
+async function hostAccept(raw){
+  try{
+    stopScanner();
+    const answer = await unpack(raw);
+    if (answer.kind !== "answer") throw new Error("返信コードではありません。");
+    peerPublicJwk = answer.publicJwk;
+    await pc.setRemoteDescription(answer.sdp);
+    await deriveSharedKey(peerPublicJwk);
+    addMessage("system",`${answer.deviceId} の返信を読み込みました。接続を確立しています。`);
+  }catch(error){ addMessage("system",`返信コードを読めません: ${error.message}`); }
+}
+
+function createPeer(isHost){
+  pc?.close();
+  channel?.close();
+  sharedKey = null;
+  pc = new RTCPeerConnection(ICE);
+  pc.onconnectionstatechange = updateStatus;
+  pc.oniceconnectionstatechange = updateStatus;
+  pc.ondatachannel = (event) => wireChannel(event.channel);
+  if (isHost) wireChannel(pc.createDataChannel("messages", { ordered:true }));
+  updateStatus();
+}
+
+function wireChannel(next){
+  channel = next;
+  channel.onopen = () => { addMessage("system","DataChannelが開きました。"); updateStatus(); };
+  channel.onclose = updateStatus;
+  channel.onerror = updateStatus;
+  channel.onmessage = async (event) => {
+    try{
+      const envelope = JSON.parse(event.data);
+      const text = await decryptText(envelope);
+      if (text.length > MAX_TEXT_LENGTH) throw new Error("本文が長すぎます。");
+      addMessage("remote", text);
+    }catch(error){ addMessage("system",`受信データを復号できません: ${error.message}`); }
+  };
+  updateStatus();
+}
+
+async function deriveSharedKey(publicJwk){
+  const peerKey = await crypto.subtle.importKey("jwk", publicJwk, { name:"ECDH", namedCurve:"P-256" }, false, []);
+  sharedKey = await crypto.subtle.deriveKey({ name:"ECDH", public:peerKey }, identity.privateKey, { name:"AES-GCM", length:256 }, false, ["encrypt","decrypt"]);
+}
+
+async function encryptText(text){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const data = new TextEncoder().encode(text);
+  const cipher = await crypto.subtle.encrypt({ name:"AES-GCM", iv }, sharedKey, data);
+  return { type:"encrypted-text", id:crypto.randomUUID(), from:identity.deviceId, createdAt:Date.now(), iv:b64encode(iv), ciphertext:b64encode(new Uint8Array(cipher)) };
+}
+
+async function decryptText(envelope){
+  if (envelope.type !== "encrypted-text") throw new Error("未対応の封筒です。");
+  const plain = await crypto.subtle.decrypt({ name:"AES-GCM", iv:b64decode(envelope.iv) }, sharedKey, b64decode(envelope.ciphertext));
+  return new TextDecoder().decode(plain);
+}
+
+function waitForIce(){
+  return new Promise((resolve) => {
+    if (pc.iceGatheringState === "complete") return resolve();
+    const done = () => {
+      if (pc.iceGatheringState === "complete") {
+        pc.removeEventListener("icegatheringstatechange", done);
+        clearTimeout(timer);
+        resolve();
+      }
+    };
+    const timer = setTimeout(resolve, 2800);
+    pc.addEventListener("icegatheringstatechange", done);
+  });
+}
+
+function show(id){
+  views.forEach((view) => $(view).classList.toggle("hidden", view !== id));
+}
+
+function updateStatus(){
+  const state = pc?.connectionState || "new";
+  const open = channel?.readyState === "open" && sharedKey;
+  els.status.textContent = open ? "暗号化接続中" : state;
+  els.status.className = `status ${open ? "ok" : state === "failed" ? "bad" : ""}`;
+  els.send.disabled = !open;
+}
+
+async function pack(obj){
+  const data = new TextEncoder().encode(JSON.stringify(obj));
+  const stream = new Blob([data]).stream().pipeThrough(new CompressionStream("gzip"));
+  const buf = await new Response(stream).arrayBuffer();
+  return b64encode(new Uint8Array(buf));
+}
+
+async function unpack(str){
+  const bytes = b64decode(str.trim());
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return JSON.parse(await new Response(stream).text());
+}
+
+function b64encode(bytes){
+  let text = "";
+  for (let index = 0; index < bytes.length; index += 0x8000) {
+    text += String.fromCharCode.apply(null, bytes.subarray(index, index + 0x8000));
+  }
+  return btoa(text);
+}
+
+function b64decode(str){
+  const bin = atob(str);
+  const bytes = new Uint8Array(bin.length);
+  for (let index = 0; index < bin.length; index += 1) bytes[index] = bin.charCodeAt(index);
+  return bytes;
+}
+
+function makeQr(id, text){
+  const el = $(id);
+  el.innerHTML = "";
+  new QRCode(el, { text, width:230, height:230, correctLevel:QRCode.CorrectLevel.L });
+}
+
+async function startScanner(containerId, onResult){
+  const container = $(containerId);
+  container.innerHTML = '<div class="scanner"><video playsinline muted></video><div class="reticle"></div></div>';
+  const video = container.querySelector("video");
+  try{
+    scanStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"environment" } });
+    video.srcObject = scanStream;
+    await video.play();
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently:true });
+    const tick = () => {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(image.data, image.width, image.height);
+        if (code?.data) {
+          stopScanner();
+          onResult(code.data);
+          return;
+        }
+      }
+      scanRAF = requestAnimationFrame(tick);
+    };
+    scanRAF = requestAnimationFrame(tick);
+  }catch(error){
+    container.innerHTML = `<p class="status bad">カメラを使えません: ${error.name}</p>`;
+  }
+}
+
+function stopScanner(){
+  if (scanRAF) cancelAnimationFrame(scanRAF);
+  if (scanStream) scanStream.getTracks().forEach((track) => track.stop());
+  scanRAF = null;
+  scanStream = null;
+}
+
+function addMessage(kind, text){
+  const node = document.createElement("div");
+  node.className = `msg ${kind}`;
+  node.textContent = text;
+  els.messages.append(node);
+  els.messages.scrollTop = els.messages.scrollHeight;
+}
+</script>
+</body>
+</html>
