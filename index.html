@@ -14,7 +14,7 @@ h1{margin:0;font-size:28px;letter-spacing:0}h2{margin:0 0 8px;font-size:20px;let
 button{border:0;border-radius:6px;background:#245c74;color:white;font:inherit;font-weight:800;padding:11px 14px;cursor:pointer}button.secondary{background:#74624a}button:disabled{opacity:.45;cursor:not-allowed}
 textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:white;color:#202124;font:inherit;padding:10px}textarea{min-height:96px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;word-break:break-all}
 .status{display:inline-block;border-radius:999px;background:#eee3d0;color:#57462f;padding:6px 10px;font-size:13px;font-weight:800}.status.ok{background:#d8f0dd;color:#215c32}.status.bad{background:#f5d7d1;color:#7a271d}
-.qr{width:fit-content;background:white;padding:12px;border-radius:6px;margin:12px 0}.qr canvas,.qr img{display:block}.hidden{display:none!important}.muted{color:#746f66;font-size:13px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.identity{margin-top:12px;padding:12px;border:1px solid #e2d8c7;border-radius:6px;background:#fbf4e8}.chat{min-height:360px;display:grid;grid-template-rows:1fr auto;gap:12px}.messages{min-height:260px;overflow:auto;display:flex;flex-direction:column;gap:8px;border:1px solid #e3d9c9;border-radius:6px;background:white;padding:12px}.msg{max-width:min(72ch,88%);border-radius:8px;padding:9px 11px;line-height:1.45;overflow-wrap:anywhere}.local{align-self:flex-end;background:#dcebf0}.remote{align-self:flex-start;background:#efe7d8}.system{align-self:center;max-width:100%;background:#f5f1ea;color:#70685d;font-size:13px}.composer{display:flex;gap:8px}.composer input{flex:1}.scanner{position:relative;margin-top:10px;border:1px solid #d8ccba;border-radius:6px;overflow:hidden;background:#111}.scanner video{width:100%;display:block}.reticle{position:absolute;inset:18%;border:2px solid #3ba7bd;border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,.34)}
+.qr{width:fit-content;max-width:100%;background:white;padding:12px;border-radius:6px;margin:12px 0}.qr canvas,.qr img{display:block;max-width:100%;height:auto}.hidden{display:none!important}.muted{color:#746f66;font-size:13px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.identity{margin-top:12px;padding:12px;border:1px solid #e2d8c7;border-radius:6px;background:#fbf4e8}.chat{min-height:360px;display:grid;grid-template-rows:1fr auto;gap:12px}.messages{min-height:260px;overflow:auto;display:flex;flex-direction:column;gap:8px;border:1px solid #e3d9c9;border-radius:6px;background:white;padding:12px}.msg{max-width:min(72ch,88%);border-radius:8px;padding:9px 11px;line-height:1.45;overflow-wrap:anywhere}.local{align-self:flex-end;background:#dcebf0}.remote{align-self:flex-start;background:#efe7d8}.system{align-self:center;max-width:100%;background:#f5f1ea;color:#70685d;font-size:13px}.composer{display:flex;gap:8px}.composer input{flex:1}.scanner{position:relative;margin-top:10px;border:1px solid #d8ccba;border-radius:6px;overflow:hidden;background:#111}.scanner video{width:100%;display:block}.reticle{position:absolute;inset:16%;border:3px solid #3ba7bd;border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,.34)}
 @media(max-width:760px){.app{width:min(100% - 18px,920px);padding:14px 0}.grid{grid-template-columns:1fr}.composer{display:grid}button{width:100%}}
 </style>
 </head>
@@ -49,6 +49,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
   <section id="hostOfferPanel" class="panel hidden">
     <h2>1. 招待コードを見せる</h2>
     <p>このQRを、相手が開いている同じアプリの「参加する」画面で読み取ってもらいます。スマホ標準カメラでは読み込めません。</p>
+    <p class="notice">QRが読みにくい場合は、画面を明るくして、QR全体が枠内に入る距離まで少し離してください。</p>
     <div id="hostQr" class="qr"></div>
     <textarea id="hostCode" readonly></textarea>
     <div class="actions">
@@ -80,6 +81,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
   <section id="guestAnswerPanel" class="panel hidden">
     <h2>2. 返信コードを見せる</h2>
     <p>このQRを招待側に読み取ってもらいます。</p>
+    <p class="notice">QRが読みにくい場合は、画面を明るくして、QR全体が枠内に入る距離まで少し離してください。</p>
     <div id="guestQr" class="qr"></div>
     <textarea id="guestCode" readonly></textarea>
     <div class="actions">
@@ -340,12 +342,13 @@ function b64decode(str){
 function makeQr(id, text){
   const el = $(id);
   el.innerHTML = "";
-  new QRCode(el, { text, width:230, height:230, correctLevel:QRCode.CorrectLevel.L });
+  const size = Math.max(260, Math.min(360, Math.floor(window.innerWidth - 64)));
+  new QRCode(el, { text, width:size, height:size, correctLevel:QRCode.CorrectLevel.L });
 }
 
 async function startScanner(containerId, onResult){
   const container = $(containerId);
-  container.innerHTML = '<div class="scanner"><video playsinline muted></video><div class="reticle"></div></div>';
+  container.innerHTML = '<p class="notice">カメラ起動中です。QR全体が枠内に入るように少し離して読み取ってください。</p><div class="scanner"><video playsinline muted></video><div class="reticle"></div></div>';
   const video = container.querySelector("video");
   try{
     scanStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"environment" } });
