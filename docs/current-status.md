@@ -58,6 +58,13 @@ Tradeoff:
 - No need for the second QR.
 - Requires a small external signaling component.
 
+Decision update:
+
+- Keep two-way QR exchange for first-time pairing.
+- Do not use signaling to complete first-time friend addition from only one QR.
+- The two-way QR exchange is important because this service is intended for people who actually meet in person.
+- A one-QR invite that can be forwarded would weaken the "met in person" property.
+
 ## Confirmed Issue: Reload Requires Reconnection
 
 If either side reloads or closes the page after connecting, the WebRTC peer connection is lost and the users must reconnect.
@@ -71,22 +78,25 @@ This is expected because:
 Potential improvement:
 
 - Store friend identity and public key locally.
-- Add a `SignalingProvider` for remote reconnection.
-- On page load, rejoin presence and automatically attempt a fresh WebRTC handshake with known friends.
+- Add a `SignalingProvider` only for reconnecting with already paired friends.
+- On page load, rejoin presence and automatically attempt a fresh WebRTC handshake with known paired friends.
 
 Tradeoff:
 
 - Better recovery after reload.
 - Requires a provider and friend/session state.
 - Still does not store message bodies on the server.
+- Must not allow first-time pairing through signaling alone.
 
 ## Recommended Next Step
 
-Keep the current QR-only flow as the serverless baseline, then prototype a minimal `SignalingProvider` as Phase 2.
+Keep the current two-way QR flow as the first-time pairing baseline, then implement local friend persistence.
+
+After local friend persistence works, prototype a minimal `SignalingProvider` as Phase 2 only for already paired friends.
 
 The provider should only handle:
 
-- room creation
+- reconnect requests between already paired friend IDs
 - presence
 - offer/answer/ICE exchange
 - short-lived cleanup
@@ -97,4 +107,26 @@ The provider should not handle:
 - encrypted message body storage for this phase
 - user accounts
 - public friend search
+- first-time friend addition
 
+## Next Implementation Order
+
+1. Save paired friend records after the two-way QR exchange succeeds.
+2. Show a simple friend list from local storage.
+3. Allow manual reconnect to a saved friend.
+4. Add a `SignalingProvider` abstraction.
+5. Add a minimal provider for already paired friends only.
+6. On reload, restore identity and friend list.
+7. Attempt reconnect only when both sides are open and already paired.
+
+Friend record draft:
+
+```json
+{
+  "friendId": "public-key-hash",
+  "displayName": "optional local label",
+  "publicJwk": {},
+  "pairedAt": 0,
+  "lastConnectedAt": 0
+}
+```
