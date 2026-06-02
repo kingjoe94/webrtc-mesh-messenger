@@ -27,7 +27,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
     </div>
     <p class="muted"><strong>Version:</strong> <span id="appVersion"></span></p>
     <p>対面でQRを交換し、WebRTC DataChannelで直接つなぐ単一HTMLの試作です。本文は送信前にAES-GCMで暗号化します。</p>
-    <p class="notice">QRはスマホ標準カメラではなく、このアプリ内の「参加する」または「返信を読む」で読み取ります。標準カメラで読むと検索になるだけです。</p>
+    <p class="notice">招待QRはスマホ標準カメラでも試せます。返信QRは、招待側のアプリ内「返信を読む」で読み取ります。</p>
     <p id="runtimeWarning" class="notice hidden"></p>
     <div class="identity">
       <div class="muted">自分のID</div>
@@ -40,7 +40,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 
   <section id="startPanel" class="panel">
     <h2>接続方法</h2>
-    <p>片方が招待、もう片方が参加を選びます。QRはこのアプリ内のスキャナーで読みます。カメラが使えない場合はコードをコピーして貼り付けてください。</p>
+    <p>片方が招待、もう片方が参加を選びます。参加側はスマホ標準カメラで招待QRを開けます。カメラが使えない場合はコードをコピーして貼り付けてください。</p>
     <div class="actions">
       <button id="hostStart" type="button">招待する</button>
       <button id="guestStart" class="secondary" type="button">参加する</button>
@@ -49,7 +49,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 
   <section id="hostOfferPanel" class="panel hidden">
     <h2>1. 招待コードを見せる</h2>
-    <p>このQRを、相手が開いている同じアプリの「参加する」画面で読み取ってもらいます。スマホ標準カメラでは読み込めません。</p>
+    <p>このQRを相手のスマホ標準カメラで読み取って開いてもらいます。うまく開けない場合は、相手が開いている同じアプリの「参加する」画面で読み取れます。</p>
     <p class="notice">QRが読みにくい場合は、画面を明るくして、QR全体が枠内に入る距離まで少し離してください。</p>
     <div id="hostQr" class="qr"></div>
     <textarea id="hostCode" readonly></textarea>
@@ -101,7 +101,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 
 <script>
 const MAX_TEXT_LENGTH = 500;
-const APP_VERSION = "2026-06-02.9-single-qr-vendored";
+const APP_VERSION = "2026-06-02.10-camera-offer-url";
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const $ = (id) => document.getElementById(id);
 const views = ["startPanel","hostOfferPanel","hostAnswerPanel","guestOfferPanel","guestAnswerPanel"];
@@ -130,9 +130,20 @@ async function init(){
     els.deviceId.textContent = identity.deviceId;
     els.send.disabled = true;
     addMessage("system","まだ接続されていません。対面でQRを交換してください。");
+    await handleUrlSignal();
   }catch(error){
     addMessage("system",`初期化エラー: ${error.message}`);
   }
+}
+
+async function handleUrlSignal(){
+  const params = new URLSearchParams(location.search);
+  const offer = params.get("offer");
+  if (!offer) return;
+  role = "guest";
+  show("guestOfferPanel");
+  addMessage("system","URL内の招待コードを読み込みます。");
+  await guestAccept(offer);
 }
 
 function showRuntimeWarning(){
@@ -211,7 +222,7 @@ async function startHost(){
   await waitForIce();
   const code = await pack({ v:1, kind:"offer", deviceId:identity.deviceId, publicJwk:identity.publicJwk, sdp:pc.localDescription });
   $("hostCode").value = code;
-  makeQr("hostQr", code);
+  makeQr("hostQr", makeOfferUrl(code));
   show("hostOfferPanel");
 }
 
@@ -224,6 +235,7 @@ function startGuest(){
 
 async function guestAccept(raw){
   try{
+    raw = extractSignalCode(raw, "offer");
     if (!raw.trim()) {
       addMessage("system","貼り付け欄が空です。QRを読むか、招待コードを貼り付けてください。");
       return false;
@@ -250,6 +262,7 @@ async function guestAccept(raw){
 
 async function hostAccept(raw){
   try{
+    raw = extractSignalCode(raw, "answer");
     if (!raw.trim()) {
       addMessage("system","貼り付け欄が空です。QRを読むか、返信コードを貼り付けてください。");
       return false;
@@ -264,6 +277,24 @@ async function hostAccept(raw){
     return true;
   }catch(error){ addMessage("system",`返信コードを読めません: ${error.message}`); }
   return false;
+}
+
+function extractSignalCode(raw, key){
+  const text = raw.trim();
+  try{
+    const url = new URL(text);
+    return url.searchParams.get(key) || text;
+  }catch{
+    return text;
+  }
+}
+
+function makeOfferUrl(code){
+  const url = new URL(location.href);
+  url.search = "";
+  url.hash = "";
+  url.searchParams.set("offer", code);
+  return url.toString();
 }
 
 function createPeer(isHost){
@@ -373,7 +404,9 @@ function makeQr(id, text){
   const size = Math.max(260, Math.min(360, Math.floor(window.innerWidth - 64)));
   const caption = document.createElement("p");
   caption.className = "notice";
-  caption.textContent = "このQRを相手のアプリ内スキャナーで読み取ってください。";
+  caption.textContent = text.startsWith("https://")
+    ? "このQRはスマホ標準カメラで開けます。"
+    : "このQRを相手のアプリ内スキャナーで読み取ってください。";
   el.append(caption);
   const box = document.createElement("div");
   box.className = "qr";
