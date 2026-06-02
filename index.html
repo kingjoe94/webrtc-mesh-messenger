@@ -102,7 +102,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 <script>
 const MAX_TEXT_LENGTH = 500;
 const QR_CHUNK_SIZE = 300;
-const APP_VERSION = "2026-06-02.6-easier-qr-detect";
+const APP_VERSION = "2026-06-02.7-visible-debug";
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const $ = (id) => document.getElementById(id);
 const views = ["startPanel","hostOfferPanel","hostAnswerPanel","guestOfferPanel","guestAnswerPanel"];
@@ -114,15 +114,27 @@ const els = {
   input: $("messageInput"), send: $("sendMessage"), form: $("messageForm")
 };
 
+window.addEventListener("error", (event) => {
+  addMessage("system", `エラー: ${event.message}`);
+});
+window.addEventListener("unhandledrejection", (event) => {
+  const message = event.reason?.message || String(event.reason);
+  addMessage("system", `エラー: ${message}`);
+});
+
 init();
 
 async function init(){
-  $("appVersion").textContent = APP_VERSION;
-  showRuntimeWarning();
-  identity = await loadIdentity();
-  els.deviceId.textContent = identity.deviceId;
-  els.send.disabled = true;
-  addMessage("system","まだ接続されていません。対面でQRを交換してください。");
+  try{
+    $("appVersion").textContent = APP_VERSION;
+    showRuntimeWarning();
+    identity = await loadIdentity();
+    els.deviceId.textContent = identity.deviceId;
+    els.send.disabled = true;
+    addMessage("system","まだ接続されていません。対面でQRを交換してください。");
+  }catch(error){
+    addMessage("system",`初期化エラー: ${error.message}`);
+  }
 }
 
 function showRuntimeWarning(){
@@ -207,12 +219,17 @@ async function startHost(){
 
 function startGuest(){
   role = "guest";
+  addMessage("system","参加モードを開始しました。カメラ起動を試します。");
   show("guestOfferPanel");
   startScanner("guestScanner", guestAccept);
 }
 
 async function guestAccept(raw){
   try{
+    if (!raw.trim()) {
+      addMessage("system","貼り付け欄が空です。QRを読むか、招待コードを貼り付けてください。");
+      return false;
+    }
     const offer = await unpackSignalCode(raw, "offer");
     if (!offer) return false;
     stopScanner();
@@ -236,6 +253,10 @@ async function guestAccept(raw){
 
 async function hostAccept(raw){
   try{
+    if (!raw.trim()) {
+      addMessage("system","貼り付け欄が空です。QRを読むか、返信コードを貼り付けてください。");
+      return false;
+    }
     const answer = await unpackSignalCode(raw, "answer");
     if (!answer) return false;
     stopScanner();
@@ -442,7 +463,11 @@ async function startScanner(containerId, onResult){
   let lastReadAt = 0;
   let frameCount = 0;
   try{
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("このブラウザではカメラAPIを使えません。");
+    }
     scanStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"environment" } });
+    if (scanStatus) scanStatus.textContent = "カメラが起動しました。QR全体を枠内に入れてください。";
     video.srcObject = scanStream;
     await video.play();
     const canvas = document.createElement("canvas");
