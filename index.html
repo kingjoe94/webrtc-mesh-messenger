@@ -25,6 +25,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
       <h1>Mesh Messenger MVP</h1>
       <span id="status" class="status">未接続</span>
     </div>
+    <p class="muted"><strong>Version:</strong> <span id="appVersion"></span></p>
     <p>対面でQRを交換し、WebRTC DataChannelで直接つなぐ単一HTMLの試作です。本文は送信前にAES-GCMで暗号化します。</p>
     <p class="notice">QRはスマホ標準カメラではなく、このアプリ内の「参加する」または「返信を読む」で読み取ります。標準カメラで読むと検索になるだけです。</p>
     <p id="runtimeWarning" class="notice hidden"></p>
@@ -101,6 +102,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 <script>
 const MAX_TEXT_LENGTH = 500;
 const QR_CHUNK_SIZE = 700;
+const APP_VERSION = "2026-06-02.3-chunked-qr";
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const $ = (id) => document.getElementById(id);
 const views = ["startPanel","hostOfferPanel","hostAnswerPanel","guestOfferPanel","guestAnswerPanel"];
@@ -115,6 +117,7 @@ const els = {
 init();
 
 async function init(){
+  $("appVersion").textContent = APP_VERSION;
   showRuntimeWarning();
   identity = await loadIdentity();
   els.deviceId.textContent = identity.deviceId;
