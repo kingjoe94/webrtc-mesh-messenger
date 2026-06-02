@@ -101,8 +101,8 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 
 <script>
 const MAX_TEXT_LENGTH = 500;
-const QR_CHUNK_SIZE = 700;
-const APP_VERSION = "2026-06-02.5-chunk-progress";
+const QR_CHUNK_SIZE = 300;
+const APP_VERSION = "2026-06-02.6-easier-qr-detect";
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const $ = (id) => document.getElementById(id);
 const views = ["startPanel","hostOfferPanel","hostAnswerPanel","guestOfferPanel","guestAnswerPanel"];
@@ -435,10 +435,12 @@ function collectQrChunk(raw, expectedKind){
 
 async function startScanner(containerId, onResult){
   const container = $(containerId);
-  container.innerHTML = '<p class="notice">カメラ起動中です。QR全体が枠内に入るように少し離して読み取ってください。</p><div class="scanner"><video playsinline muted></video><div class="reticle"></div></div>';
+  container.innerHTML = '<p id="' + containerId + 'Status" class="notice">カメラ起動中です。QR全体が枠内に入るように少し離して読み取ってください。</p><div class="scanner"><video playsinline muted></video><div class="reticle"></div></div>';
   const video = container.querySelector("video");
+  const scanStatus = $(containerId + "Status");
   let lastCode = "";
   let lastReadAt = 0;
+  let frameCount = 0;
   try{
     scanStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"environment" } });
     video.srcObject = scanStream;
@@ -451,12 +453,17 @@ async function startScanner(containerId, onResult){
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(image.data, image.width, image.height);
+        frameCount += 1;
+        if (frameCount % 45 === 0 && scanStatus) {
+          scanStatus.textContent = "スキャン中です。QRが検出されない場合は、少し離す、画面を明るくする、端末を縦向きにする、を試してください。";
+        }
+        const code = jsQR(image.data, image.width, image.height, { inversionAttempts:"attemptBoth" });
         if (code?.data) {
           const now = Date.now();
           if (code.data !== lastCode || now - lastReadAt > 1600) {
             lastCode = code.data;
             lastReadAt = now;
+            if (scanStatus) scanStatus.textContent = "QRを検出しました。処理しています。";
             const done = await onResult(code.data);
             if (done) return;
           }
