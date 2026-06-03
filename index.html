@@ -107,7 +107,14 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 const MAX_TEXT_LENGTH = 500;
 const APP_VERSION = "2026-06-03.04-firebase-config";
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
-const FIREBASE_CONFIG = null;
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDqEILuABkK0m79iy80Uu_z2W_TbJqT-uU",
+  authDomain: "webrtc-mesh-messenger-mvp.firebaseapp.com",
+  projectId: "webrtc-mesh-messenger-mvp",
+  storageBucket: "webrtc-mesh-messenger-mvp.firebasestorage.app",
+  messagingSenderId: "458710956799",
+  appId: "1:458710956799:web:075abfb239dcf4dd766aca"
+};
 const $ = (id) => document.getElementById(id);
 const views = ["startPanel","hostOfferPanel","hostAnswerPanel","guestOfferPanel","guestAnswerPanel"];
 let pc, channel, role, identity, peerPublicJwk, sharedKey, scanStream, scanRAF, expectedFriendId, signalingProvider;
