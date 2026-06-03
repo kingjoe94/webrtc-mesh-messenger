@@ -265,7 +265,7 @@ async function startProviderReconnect(friend){
   await signalingProvider.sendSignal(friend.friendId, {
     kind:"offer",
     mode:"reconnect",
-    sdp:pc.localDescription
+    sdp:serializeDescription(pc.localDescription)
   });
   addMessage("system",`${signalingProvider.label} で ${friend.friendId} に再接続リクエストを送りました。相手の応答を待っています。`);
 }
@@ -397,7 +397,7 @@ async function acceptProviderOffer(signal){
   await signalingProvider.sendSignal(friend.friendId, {
     kind:"answer",
     mode:"reconnect",
-    sdp:pc.localDescription
+    sdp:serializeDescription(pc.localDescription)
   });
   addMessage("system",`${friend.friendId} からのFirebase再接続に応答しました。`);
 }
@@ -416,6 +416,10 @@ async function acceptProviderAnswer(signal){
 function isExpiredSignal(signal){
   const expiresAt = signal.expiresAt?.toMillis?.() || 0;
   return expiresAt && expiresAt <= Date.now();
+}
+
+function serializeDescription(description){
+  return { type:description.type, sdp:description.sdp };
 }
 
 function startGuest(){
