@@ -58,7 +58,8 @@ service cloud.firestore {
         request.resource.data.from.size() <= 64 &&
         request.resource.data.to.size() <= 64 &&
         request.resource.data.kind in ['reconnect-request', 'offer', 'answer', 'ice'];
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if resource.data.to == deviceId;
     }
   }
 }
@@ -76,4 +77,4 @@ TTL cleanup is not immediate, so the app must still ignore expired signaling dat
 
 ## Current Limit
 
-Firebase reconnect currently sends complete offer/answer SDP after ICE gathering. It does not yet send separate trickle ICE candidate messages.
+Firebase reconnect currently sends complete offer/answer SDP after ICE gathering. It does not yet send separate trickle ICE candidate messages. Processed and expired signal documents are deleted by the receiving client.

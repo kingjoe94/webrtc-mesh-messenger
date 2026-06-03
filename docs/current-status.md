@@ -23,7 +23,7 @@ Working app version:
 Current local app version:
 
 ```txt
-2026-06-03.05-firebase-reconnect
+2026-06-03.06-signal-cleanup
 ```
 
 Current URL:
@@ -125,12 +125,14 @@ Done:
 4. Add a `SignalingProvider` abstraction with the current QR exchange flow as the default provider.
 5. Add Firebase provider configuration shell and setup notes.
 6. Route saved-friend reconnect offer and answer through Firebase.
+7. Confirm Firebase reconnect works between already paired devices.
+8. Delete processed and expired Firebase signal documents from the receiving client.
 
 Next:
 
-1. Test Firebase reconnect with two already paired devices.
+1. Update Firestore Rules to allow signal deletion.
 2. Add separate ICE candidate exchange if complete-SDP reconnect is unreliable.
-3. On reload, restore identity and friend list.
+3. Improve Firebase reconnect status messages.
 4. Attempt reconnect only when both sides are open and already paired.
 
 Friend record draft:

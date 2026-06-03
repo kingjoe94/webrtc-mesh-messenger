@@ -105,7 +105,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 
 <script>
 const MAX_TEXT_LENGTH = 500;
-const APP_VERSION = "2026-06-03.05-firebase-reconnect";
+const APP_VERSION = "2026-06-03.06-signal-cleanup";
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDqEILuABkK0m79iy80Uu_z2W_TbJqT-uU",
@@ -316,7 +316,7 @@ class FirebaseSignalingProvider {
         if (change.type !== "added") return;
         const signal = change.doc.data();
         if (signal.to !== this.identity.deviceId) return;
-        this.onSignalCallback(signal);
+        this.onSignalCallback(signal, change.doc.ref);
       });
     });
     return { deviceId:this.identity.deviceId };
@@ -334,6 +334,10 @@ class FirebaseSignalingProvider {
       createdAt: serverTimestamp(),
       expiresAt
     });
+  }
+  async deleteSignal(signalRef){
+    const { deleteDoc } = this.firebase.firestoreModule;
+    await deleteDoc(signalRef);
   }
   onSignal(callback){
     this.onSignalCallback = callback;
@@ -360,22 +364,25 @@ class ManualQrSignalingProvider {
   async sendSignal(){
     throw new Error("QR交換モードではリモート再接続シグナルを送れません。");
   }
+  async deleteSignal(){}
   onSignal(){
     return () => {};
   }
   disconnect(){}
 }
 
-async function handleProviderSignal(signal){
+async function handleProviderSignal(signal, signalRef){
   try{
-    if (isExpiredSignal(signal)) return;
-    if (signal.kind === "offer") {
-      await acceptProviderOffer(signal);
+    if (isExpiredSignal(signal)) {
+      await signalingProvider.deleteSignal(signalRef);
       return;
     }
-    if (signal.kind === "answer") {
+    if (signal.kind === "offer") {
+      await acceptProviderOffer(signal);
+    } else if (signal.kind === "answer") {
       await acceptProviderAnswer(signal);
     }
+    await signalingProvider.deleteSignal(signalRef);
   }catch(error){
     addMessage("system",`Firebaseシグナルを処理できません: ${error.message}`);
   }
