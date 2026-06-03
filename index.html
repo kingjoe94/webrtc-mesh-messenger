@@ -105,7 +105,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 
 <script>
 const MAX_TEXT_LENGTH = 500;
-const APP_VERSION = "2026-06-03.07-cleanup-errors";
+const APP_VERSION = "2026-06-03.08-signal-dedupe";
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDqEILuABkK0m79iy80Uu_z2W_TbJqT-uU",
@@ -299,7 +299,7 @@ class FirebaseSignalingProvider {
     this.label = "Firebase";
     this.supportsRemoteReconnect = true;
     this.unsubscribe = null;
-    this.seenSignalIds = new Set();
+    this.seenSignalIds = loadSeenSignalIds(this.identity.deviceId);
     this.onSignalCallback = () => {};
   }
   async connect(){
@@ -317,6 +317,7 @@ class FirebaseSignalingProvider {
         if (change.type !== "added") return;
         if (this.seenSignalIds.has(change.doc.id)) return;
         this.seenSignalIds.add(change.doc.id);
+        saveSeenSignalIds(this.identity.deviceId, this.seenSignalIds);
         const signal = change.doc.data();
         if (signal.to !== this.identity.deviceId) return;
         this.onSignalCallback(signal, change.doc.ref);
@@ -395,8 +396,18 @@ async function cleanupProviderSignal(signalRef){
   try{
     await signalingProvider.deleteSignal(signalRef);
   }catch(error){
-    addMessage("system",`Firebaseシグナルを削除できません: ${error.message}`);
+    console.warn("Firebase signal cleanup failed", error);
   }
+}
+
+function loadSeenSignalIds(deviceId){
+  const key = `mesh-messenger:seen-signals:${deviceId}`;
+  return new Set(JSON.parse(localStorage.getItem(key) || "[]"));
+}
+
+function saveSeenSignalIds(deviceId, ids){
+  const key = `mesh-messenger:seen-signals:${deviceId}`;
+  localStorage.setItem(key, JSON.stringify([...ids].slice(-200)));
 }
 
 async function acceptProviderOffer(signal){

@@ -23,7 +23,7 @@ Working app version:
 Current local app version:
 
 ```txt
-2026-06-03.07-cleanup-errors
+2026-06-03.08-signal-dedupe
 ```
 
 Current URL:
@@ -128,6 +128,7 @@ Done:
 7. Confirm Firebase reconnect works between already paired devices.
 8. Delete processed and expired Firebase signal documents from the receiving client.
 9. Keep Firebase delete permission failures from repeating as signal processing failures.
+10. Persist seen Firebase signal IDs locally so old undeleted signals do not reprocess after reload.
 
 Next:
 
