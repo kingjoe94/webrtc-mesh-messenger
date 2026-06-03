@@ -9,9 +9,9 @@
 <style>
 :root{font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#e9edf0;color:#202124}
 *{box-sizing:border-box}body{margin:0}.app{width:min(980px,calc(100% - 28px));margin:0 auto;padding:22px 0 28px}.panel{background:#fffdf8;border:1px solid #d9d2c5;border-radius:8px;padding:18px;box-shadow:0 10px 28px rgba(31,43,55,.08)}.panel+.panel{margin-top:14px}
-h1{margin:0;font-size:28px;letter-spacing:0}h2{margin:0 0 8px;font-size:19px;letter-spacing:0}p{margin:8px 0 0;color:#5f6670;line-height:1.55}.appHeader{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start}.titleBlock{display:grid;gap:6px}.metaBar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.meta{border:1px solid #d8dee6;border-radius:999px;background:#f7fafc;color:#43505c;padding:5px 9px;font-size:12px;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}.metric{border:1px solid #e0d8cb;border-radius:8px;background:#faf6ed;padding:10px 12px;min-width:0}.metricLabel{display:block;color:#6d7280;font-size:12px;font-weight:800}.metricValue{display:block;margin-top:3px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+h1{margin:0;font-size:28px;letter-spacing:0}h2{margin:0 0 8px;font-size:19px;letter-spacing:0}p{margin:8px 0 0;color:#5f6670;line-height:1.55}.appHeader{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start}.titleBlock{display:grid;gap:6px}.metaBar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.meta{border:1px solid #d8dee6;border-radius:999px;background:#f7fafc;color:#43505c;padding:5px 9px;font-size:12px;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}.metric{border:1px solid #e0d8cb;border-radius:8px;background:#faf6ed;padding:10px 12px;min-width:0}.metricLabel{display:block;color:#6d7280;font-size:12px;font-weight:800}.metric input{margin-top:5px;padding:7px 8px}.metricValue{display:block;margin-top:3px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
 .notice{border:1px solid #d8c3a4;border-radius:6px;background:#fff2d8;color:#634717;padding:10px 12px;font-weight:700}
-button{border:0;border-radius:6px;background:#24627a;color:white;font:inherit;font-weight:800;padding:11px 14px;cursor:pointer}button.secondary{background:#706047}button.small{padding:7px 10px;font-size:12px}button:disabled{opacity:.45;cursor:not-allowed}
+button{border:0;border-radius:6px;background:#24627a;color:white;font:inherit;font-weight:800;padding:11px 14px;cursor:pointer}button.secondary{background:#706047}button.ghost{background:#eef2f5;color:#43505c}button.small{padding:7px 10px;font-size:12px}button:disabled{opacity:.45;cursor:not-allowed}
 textarea,input{width:100%;border:1px solid #c6cbd2;border-radius:6px;background:white;color:#202124;font:inherit;padding:10px}textarea{min-height:96px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;word-break:break-all}
 .status{display:inline-block;border-radius:999px;background:#e7ebef;color:#43505c;padding:7px 11px;font-size:13px;font-weight:900}.status.ok{background:#d9f1df;color:#1d6231}.status.bad{background:#f5d7d1;color:#7a271d}
 .friendsWrap{margin-top:14px}.friends{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:6px}.friend{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid #dfe3e8;border-radius:6px;background:white;padding:8px 10px}.friendInfo{display:grid;gap:2px;min-width:0}.friend strong{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.friend span{font-size:12px;color:#707681;white-space:nowrap}
@@ -37,8 +37,8 @@ textarea,input{width:100%;border:1px solid #c6cbd2;border-radius:6px;background:
     <p id="runtimeWarning" class="notice hidden"></p>
     <div class="identity">
       <div class="metric">
-        <span class="metricLabel">自分のID</span>
-        <span class="metricValue" id="deviceId"></span>
+        <span class="metricLabel">自分の名前</span>
+        <input id="displayName" maxlength="24" autocomplete="name" placeholder="名前を入力">
       </div>
       <div class="metric">
         <span class="metricLabel">保存済みの相手</span>
@@ -113,7 +113,7 @@ textarea,input{width:100%;border:1px solid #c6cbd2;border-radius:6px;background:
 
 <script>
 const MAX_TEXT_LENGTH = 500;
-const APP_VERSION = "2026-06-03.11-hide-reset-id";
+const APP_VERSION = "2026-06-03.12-display-names";
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDqEILuABkK0m79iy80Uu_z2W_TbJqT-uU",
@@ -125,10 +125,10 @@ const FIREBASE_CONFIG = {
 };
 const $ = (id) => document.getElementById(id);
 const views = ["startPanel","hostOfferPanel","hostAnswerPanel","guestOfferPanel","guestAnswerPanel"];
-let pc, channel, role, identity, peerPublicJwk, sharedKey, scanStream, scanRAF, expectedFriendId, signalingProvider;
+let pc, channel, role, identity, peerPublicJwk, peerDisplayName, sharedKey, scanStream, scanRAF, expectedFriendId, signalingProvider;
 
 const els = {
-  status: $("status"), deviceId: $("deviceId"), friendCount: $("friendCount"), friendsList: $("friendsList"), signalingMode: $("signalingMode"), messages: $("messages"),
+  status: $("status"), displayName: $("displayName"), friendCount: $("friendCount"), friendsList: $("friendsList"), signalingMode: $("signalingMode"), messages: $("messages"),
   input: $("messageInput"), send: $("sendMessage"), form: $("messageForm")
 };
 
@@ -148,7 +148,7 @@ async function init(){
     if (versionEl) versionEl.textContent = APP_VERSION;
     showRuntimeWarning();
     identity = await loadIdentity();
-    els.deviceId.textContent = identity.deviceId;
+    els.displayName.value = identity.displayName || "";
     signalingProvider = createSignalingProvider(identity);
     els.signalingMode.textContent = signalingProvider.label;
     await signalingProvider.connect();
@@ -196,6 +196,11 @@ $("guestStart").onclick = startGuest;
 $("hostScanAnswer").onclick = () => { show("hostAnswerPanel"); startScanner("hostScanner", hostAccept); };
 $("hostAcceptAnswer").onclick = () => hostAccept($("hostAnswerPaste").value);
 $("guestAcceptOffer").onclick = () => guestAccept($("guestOfferPaste").value);
+els.displayName.onchange = () => {
+  identity.displayName = normalizeDisplayName(els.displayName.value);
+  els.displayName.value = identity.displayName;
+  saveIdentity();
+};
 document.querySelectorAll("[data-copy]").forEach((button) => {
   button.onclick = async () => {
     const target = $(button.dataset.copy);
@@ -219,15 +224,29 @@ async function loadIdentity(){
   if (saved) {
     const parsed = JSON.parse(saved);
     parsed.privateKey = await crypto.subtle.importKey("jwk", parsed.privateJwk, { name:"ECDH", namedCurve:"P-256" }, true, ["deriveKey"]);
+    parsed.displayName = normalizeDisplayName(parsed.displayName || "");
     return parsed;
   }
   const pair = await crypto.subtle.generateKey({ name:"ECDH", namedCurve:"P-256" }, true, ["deriveKey"]);
   const publicJwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
   const privateJwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
   const deviceId = await shortHash(JSON.stringify(publicJwk));
-  const next = { deviceId, publicJwk, privateJwk, privateKey: pair.privateKey };
-  localStorage.setItem("mesh-messenger:identity", JSON.stringify({ deviceId, publicJwk, privateJwk }));
+  const next = { deviceId, displayName:"", publicJwk, privateJwk, privateKey: pair.privateKey };
+  localStorage.setItem("mesh-messenger:identity", JSON.stringify({ deviceId, displayName:"", publicJwk, privateJwk }));
   return next;
+}
+
+function saveIdentity(){
+  localStorage.setItem("mesh-messenger:identity", JSON.stringify({
+    deviceId:identity.deviceId,
+    displayName:identity.displayName || "",
+    publicJwk:identity.publicJwk,
+    privateJwk:identity.privateJwk
+  }));
+}
+
+function normalizeDisplayName(value){
+  return value.trim().slice(0, 24);
 }
 
 async function shortHash(text){
@@ -242,7 +261,7 @@ async function startHost(){
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
   await waitForIce();
-  const code = await pack({ v:1, kind:"offer", deviceId:identity.deviceId, publicJwk:identity.publicJwk, sdp:pc.localDescription });
+  const code = await pack({ v:1, kind:"offer", deviceId:identity.deviceId, displayName:identity.displayName, publicJwk:identity.publicJwk, sdp:pc.localDescription });
   $("hostCode").value = code;
   makeQr("hostQr", makeOfferUrl(code));
   show("hostOfferPanel");
@@ -262,6 +281,7 @@ async function startProviderReconnect(friend){
   role = "host";
   expectedFriendId = friend.friendId;
   peerPublicJwk = friend.publicJwk;
+  peerDisplayName = friend.displayName || "";
   createPeer(true);
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
@@ -269,6 +289,7 @@ async function startProviderReconnect(friend){
   await signalingProvider.sendSignal(friend.friendId, {
     kind:"offer",
     mode:"reconnect",
+    displayName:identity.displayName,
     sdp:serializeDescription(pc.localDescription)
   });
   addMessage("system",`${signalingProvider.label} で ${friend.friendId} に再接続リクエストを送りました。相手の応答を待っています。`);
@@ -277,13 +298,14 @@ async function startProviderReconnect(friend){
 async function startQrReconnect(friend){
   role = "host";
   expectedFriendId = friend.friendId;
+  peerDisplayName = friend.displayName || "";
   createPeer(true);
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
   await waitForIce();
   const code = await pack({
     v:1, kind:"offer", mode:"reconnect", reconnectTo:friend.friendId,
-    deviceId:identity.deviceId, publicJwk:identity.publicJwk, sdp:pc.localDescription
+    deviceId:identity.deviceId, displayName:identity.displayName, publicJwk:identity.publicJwk, sdp:pc.localDescription
   });
   $("hostCode").value = code;
   makeQr("hostQr", makeOfferUrl(code));
@@ -421,6 +443,7 @@ async function acceptProviderOffer(signal){
   role = "guest";
   expectedFriendId = signal.from;
   peerPublicJwk = friend.publicJwk;
+  peerDisplayName = signal.displayName || friend.displayName || "";
   createPeer(false);
   await pc.setRemoteDescription(signal.sdp);
   const answer = await pc.createAnswer();
@@ -430,6 +453,7 @@ async function acceptProviderOffer(signal){
   await signalingProvider.sendSignal(friend.friendId, {
     kind:"answer",
     mode:"reconnect",
+    displayName:identity.displayName,
     sdp:serializeDescription(pc.localDescription)
   });
   addMessage("system",`${friend.friendId} からのFirebase再接続に応答しました。`);
@@ -441,6 +465,7 @@ async function acceptProviderAnswer(signal){
   const friend = getFriends().find((item) => item.friendId === signal.from);
   if (!friend) throw new Error("保存済みではない相手からの返信です。");
   peerPublicJwk = friend.publicJwk;
+  peerDisplayName = signal.displayName || friend.displayName || "";
   await pc.setRemoteDescription(signal.sdp);
   await deriveSharedKey(peerPublicJwk);
   addMessage("system",`${friend.friendId} のFirebase返信を読み込みました。接続を確立しています。`);
@@ -478,13 +503,14 @@ async function guestAccept(raw){
       throw new Error("保存済みではない相手からの再接続コードです。");
     }
     peerPublicJwk = offer.publicJwk;
+    peerDisplayName = normalizeDisplayName(offer.displayName || "");
     createPeer(false);
     await pc.setRemoteDescription(offer.sdp);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     await waitForIce();
     await deriveSharedKey(peerPublicJwk);
-    const code = await pack({ v:1, kind:"answer", deviceId:identity.deviceId, publicJwk:identity.publicJwk, sdp:pc.localDescription });
+    const code = await pack({ v:1, kind:"answer", deviceId:identity.deviceId, displayName:identity.displayName, publicJwk:identity.publicJwk, sdp:pc.localDescription });
     $("guestCode").value = code;
     makeQr("guestQr", code);
     show("guestAnswerPanel");
@@ -507,6 +533,7 @@ async function hostAccept(raw){
     const answerFriendId = await shortHash(JSON.stringify(answer.publicJwk));
     if (expectedFriendId && answerFriendId !== expectedFriendId) throw new Error("選択した相手とは別の返信コードです。");
     peerPublicJwk = answer.publicJwk;
+    peerDisplayName = normalizeDisplayName(answer.displayName || "");
     await pc.setRemoteDescription(answer.sdp);
     await deriveSharedKey(peerPublicJwk);
     addMessage("system",`${answer.deviceId} の返信を読み込みました。接続を確立しています。`);
@@ -548,7 +575,7 @@ function createPeer(isHost){
 function wireChannel(next){
   channel = next;
   channel.onopen = async () => {
-    if (peerPublicJwk) await saveFriend(peerPublicJwk);
+    if (peerPublicJwk) await saveFriend(peerPublicJwk, peerDisplayName);
     addMessage("system","DataChannelが開きました。");
     updateStatus();
   };
@@ -565,7 +592,7 @@ function wireChannel(next){
   updateStatus();
 }
 
-async function saveFriend(publicJwk){
+async function saveFriend(publicJwk, displayName = ""){
   const friendId = await shortHash(JSON.stringify(publicJwk));
   const key = "mesh-messenger:friends";
   const friends = getFriends();
@@ -573,10 +600,11 @@ async function saveFriend(publicJwk){
   const existing = friends.find((friend) => friend.friendId === friendId);
   if (existing) {
     existing.publicJwk = publicJwk;
+    if (displayName && !existing.displayName) existing.displayName = displayName;
     existing.lastConnectedAt = now;
   } else {
-    friends.push({ friendId, publicJwk, pairedAt:now, lastConnectedAt:now });
-    addMessage("system",`相手 ${friendId} をこの端末に保存しました。`);
+    friends.push({ friendId, displayName, publicJwk, pairedAt:now, lastConnectedAt:now });
+    addMessage("system",`${friendLabel({ friendId, displayName })} を保存しました。`);
   }
   localStorage.setItem(key, JSON.stringify(friends));
   updateFriendCount();
@@ -604,18 +632,38 @@ function updateFriendCount(){
     const info = document.createElement("div");
     info.className = "friendInfo";
     const id = document.createElement("strong");
-    id.textContent = friend.friendId;
+    id.textContent = friendLabel(friend);
     const last = document.createElement("span");
-    last.textContent = formatTime(friend.lastConnectedAt || friend.pairedAt);
+    last.textContent = `${friend.friendId} / ${formatTime(friend.lastConnectedAt || friend.pairedAt)}`;
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.className = "small ghost";
+    edit.textContent = "名前";
+    edit.onclick = () => editFriendName(friend.friendId);
     const reconnect = document.createElement("button");
     reconnect.type = "button";
     reconnect.className = "small secondary";
     reconnect.textContent = "再接続";
     reconnect.onclick = () => startReconnect(friend.friendId);
     info.append(id, last);
-    item.append(info, reconnect);
+    item.append(info, edit, reconnect);
     els.friendsList.append(item);
   });
+}
+
+function friendLabel(friend){
+  return friend.displayName || friend.friendId;
+}
+
+function editFriendName(friendId){
+  const friends = getFriends();
+  const friend = friends.find((item) => item.friendId === friendId);
+  if (!friend) return;
+  const next = prompt("名前", friend.displayName || "");
+  if (next === null) return;
+  friend.displayName = normalizeDisplayName(next);
+  localStorage.setItem("mesh-messenger:friends", JSON.stringify(friends));
+  updateFriendCount();
 }
 
 function formatTime(value){
