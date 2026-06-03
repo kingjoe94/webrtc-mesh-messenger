@@ -37,6 +37,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
         <button class="secondary" id="resetIdentity" type="button">ID再生成</button>
       </div>
       <div class="muted">保存済みの相手: <span id="friendCount">0</span></div>
+      <div class="muted">再接続方式: <span id="signalingMode">QR交換</span></div>
       <ul id="friendsList" class="friends"></ul>
     </div>
   </section>
@@ -104,14 +105,14 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 
 <script>
 const MAX_TEXT_LENGTH = 500;
-const APP_VERSION = "2026-06-03.02-manual-reconnect";
+const APP_VERSION = "2026-06-03.03-signaling-provider";
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const $ = (id) => document.getElementById(id);
 const views = ["startPanel","hostOfferPanel","hostAnswerPanel","guestOfferPanel","guestAnswerPanel"];
-let pc, channel, role, identity, peerPublicJwk, sharedKey, scanStream, scanRAF, expectedFriendId;
+let pc, channel, role, identity, peerPublicJwk, sharedKey, scanStream, scanRAF, expectedFriendId, signalingProvider;
 
 const els = {
-  status: $("status"), deviceId: $("deviceId"), friendCount: $("friendCount"), friendsList: $("friendsList"), messages: $("messages"),
+  status: $("status"), deviceId: $("deviceId"), friendCount: $("friendCount"), friendsList: $("friendsList"), signalingMode: $("signalingMode"), messages: $("messages"),
   input: $("messageInput"), send: $("sendMessage"), form: $("messageForm")
 };
 
@@ -131,6 +132,9 @@ async function init(){
     showRuntimeWarning();
     identity = await loadIdentity();
     els.deviceId.textContent = identity.deviceId;
+    signalingProvider = createSignalingProvider(identity);
+    els.signalingMode.textContent = signalingProvider.label;
+    await signalingProvider.connect();
     updateFriendCount();
     els.send.disabled = true;
     addMessage("system","まだ接続されていません。対面でQRを交換してください。");
@@ -234,6 +238,19 @@ async function startHost(){
 async function startReconnect(friendId){
   const friend = getFriends().find((item) => item.friendId === friendId);
   if (!friend) return addMessage("system","保存済みの相手が見つかりません。");
+  if (signalingProvider.supportsRemoteReconnect) {
+    await startProviderReconnect(friend);
+    return;
+  }
+  await startQrReconnect(friend);
+}
+
+async function startProviderReconnect(friend){
+  addMessage("system",`${signalingProvider.label} で ${friend.friendId} への再接続を開始します。`);
+  await signalingProvider.sendSignal(friend.friendId, { kind:"reconnect-request", from:identity.deviceId, createdAt:Date.now() });
+}
+
+async function startQrReconnect(friend){
   role = "host";
   expectedFriendId = friend.friendId;
   createPeer(true);
@@ -248,6 +265,31 @@ async function startReconnect(friendId){
   makeQr("hostQr", makeOfferUrl(code));
   show("hostOfferPanel");
   addMessage("system",`${friend.friendId} への再接続QRを作成しました。相手に読み取ってもらってください。`);
+}
+
+function createSignalingProvider(currentIdentity){
+  return new ManualQrSignalingProvider(currentIdentity);
+}
+
+class ManualQrSignalingProvider {
+  constructor(currentIdentity){
+    this.identity = currentIdentity;
+    this.label = "QR交換";
+    this.supportsRemoteReconnect = false;
+  }
+  async connect(){
+    return { deviceId:this.identity.deviceId };
+  }
+  async publishPresence(){
+    return false;
+  }
+  async sendSignal(){
+    throw new Error("QR交換モードではリモート再接続シグナルを送れません。");
+  }
+  onSignal(){
+    return () => {};
+  }
+  disconnect(){}
 }
 
 function startGuest(){
