@@ -105,8 +105,9 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 
 <script>
 const MAX_TEXT_LENGTH = 500;
-const APP_VERSION = "2026-06-03.03-signaling-provider";
+const APP_VERSION = "2026-06-03.04-firebase-config";
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+const FIREBASE_CONFIG = null;
 const $ = (id) => document.getElementById(id);
 const views = ["startPanel","hostOfferPanel","hostAnswerPanel","guestOfferPanel","guestAnswerPanel"];
 let pc, channel, role, identity, peerPublicJwk, sharedKey, scanStream, scanRAF, expectedFriendId, signalingProvider;
@@ -268,7 +269,61 @@ async function startQrReconnect(friend){
 }
 
 function createSignalingProvider(currentIdentity){
+  if (FIREBASE_CONFIG?.apiKey) return new FirebaseSignalingProvider(currentIdentity, FIREBASE_CONFIG);
   return new ManualQrSignalingProvider(currentIdentity);
+}
+
+class FirebaseSignalingProvider {
+  constructor(currentIdentity, config){
+    this.identity = currentIdentity;
+    this.config = config;
+    this.label = "Firebase";
+    this.supportsRemoteReconnect = true;
+    this.unsubscribe = null;
+    this.onSignalCallback = () => {};
+  }
+  async connect(){
+    const appModule = await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js");
+    const firestoreModule = await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js");
+    this.firebase = {
+      appModule,
+      firestoreModule,
+      app: appModule.initializeApp(this.config)
+    };
+    this.db = firestoreModule.getFirestore(this.firebase.app);
+    this.inboxRef = firestoreModule.collection(this.db, "devices", this.identity.deviceId, "signals");
+    this.unsubscribe = firestoreModule.onSnapshot(this.inboxRef, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type !== "added") return;
+        const signal = change.doc.data();
+        if (signal.to !== this.identity.deviceId) return;
+        this.onSignalCallback(signal);
+      });
+    });
+    return { deviceId:this.identity.deviceId };
+  }
+  async publishPresence(){
+    return false;
+  }
+  async sendSignal(friendId, signal){
+    const { addDoc, collection, serverTimestamp, Timestamp } = this.firebase.firestoreModule;
+    const expiresAt = Timestamp.fromMillis(Date.now() + 5 * 60 * 1000);
+    await addDoc(collection(this.db, "devices", friendId, "signals"), {
+      ...signal,
+      from: this.identity.deviceId,
+      to: friendId,
+      createdAt: serverTimestamp(),
+      expiresAt
+    });
+  }
+  onSignal(callback){
+    this.onSignalCallback = callback;
+    return () => { this.onSignalCallback = () => {}; };
+  }
+  disconnect(){
+    this.unsubscribe?.();
+    this.unsubscribe = null;
+  }
 }
 
 class ManualQrSignalingProvider {

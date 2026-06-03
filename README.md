@@ -20,3 +20,7 @@ Sending `index.html` to a phone as a local file is not enough for reliable QR sc
 ## Notes
 
 This is an early proof of concept. It is not production-ready security software.
+
+## Firebase Signaling Setup
+
+See `docs/firebase-setup.md` for the optional Firestore signaling provider setup.

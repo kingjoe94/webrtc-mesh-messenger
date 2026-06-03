@@ -23,7 +23,7 @@ Working app version:
 Current local app version:
 
 ```txt
-2026-06-03.03-signaling-provider
+2026-06-03.04-firebase-config
 ```
 
 Current URL:
@@ -123,12 +123,14 @@ Done:
 2. Show a simple friend list from local storage.
 3. Allow manual reconnect to a saved friend through a targeted QR offer.
 4. Add a `SignalingProvider` abstraction with the current QR exchange flow as the default provider.
+5. Add Firebase provider configuration shell and setup notes.
 
 Next:
 
-1. Add a minimal provider for already paired friends only.
-2. On reload, restore identity and friend list.
-3. Attempt reconnect only when both sides are open and already paired.
+1. Fill `FIREBASE_CONFIG` from the Firebase web app settings.
+2. Route saved-friend reconnect offer, answer, and ICE exchange through Firebase.
+3. On reload, restore identity and friend list.
+4. Attempt reconnect only when both sides are open and already paired.
 
 Friend record draft:
 
