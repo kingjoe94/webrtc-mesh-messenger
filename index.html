@@ -7,37 +7,53 @@
 <script src="./vendor/qrcode.min.js"></script>
 <script src="./vendor/jsQR.js"></script>
 <style>
-:root{font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f2efe8;color:#202124}
-*{box-sizing:border-box}body{margin:0}.app{width:min(920px,calc(100% - 28px));margin:0 auto;padding:28px 0}.panel{background:#fffaf2;border:1px solid #ded5c4;border-radius:8px;padding:18px;box-shadow:0 12px 34px rgba(68,53,30,.1)}.panel+.panel{margin-top:14px}
-h1{margin:0;font-size:28px;letter-spacing:0}h2{margin:0 0 8px;font-size:20px;letter-spacing:0}p{margin:8px 0 0;color:#635d52;line-height:1.55}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+:root{font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#e9edf0;color:#202124}
+*{box-sizing:border-box}body{margin:0}.app{width:min(980px,calc(100% - 28px));margin:0 auto;padding:22px 0 28px}.panel{background:#fffdf8;border:1px solid #d9d2c5;border-radius:8px;padding:18px;box-shadow:0 10px 28px rgba(31,43,55,.08)}.panel+.panel{margin-top:14px}
+h1{margin:0;font-size:28px;letter-spacing:0}h2{margin:0 0 8px;font-size:19px;letter-spacing:0}p{margin:8px 0 0;color:#5f6670;line-height:1.55}.appHeader{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start}.titleBlock{display:grid;gap:6px}.metaBar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.meta{border:1px solid #d8dee6;border-radius:999px;background:#f7fafc;color:#43505c;padding:5px 9px;font-size:12px;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}.metric{border:1px solid #e0d8cb;border-radius:8px;background:#faf6ed;padding:10px 12px;min-width:0}.metricLabel{display:block;color:#6d7280;font-size:12px;font-weight:800}.metricValue{display:block;margin-top:3px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
 .notice{border:1px solid #d8c3a4;border-radius:6px;background:#fff2d8;color:#634717;padding:10px 12px;font-weight:700}
-button{border:0;border-radius:6px;background:#245c74;color:white;font:inherit;font-weight:800;padding:11px 14px;cursor:pointer}button.secondary{background:#74624a}button.small{padding:7px 10px;font-size:12px}button:disabled{opacity:.45;cursor:not-allowed}
-textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:white;color:#202124;font:inherit;padding:10px}textarea{min-height:96px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;word-break:break-all}
-.status{display:inline-block;border-radius:999px;background:#eee3d0;color:#57462f;padding:6px 10px;font-size:13px;font-weight:800}.status.ok{background:#d8f0dd;color:#215c32}.status.bad{background:#f5d7d1;color:#7a271d}
-.friends{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:6px}.friend{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid #e2d8c7;border-radius:6px;background:white;padding:8px 10px}.friendInfo{display:grid;gap:2px}.friend strong{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}.friend span{font-size:12px;color:#746f66;white-space:nowrap}
-.qr{width:fit-content;max-width:100%;background:white;padding:12px;border-radius:6px;margin:12px 0}.qr canvas,.qr img{display:block;max-width:100%;height:auto}.hidden{display:none!important}.muted{color:#746f66;font-size:13px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.identity{margin-top:12px;padding:12px;border:1px solid #e2d8c7;border-radius:6px;background:#fbf4e8}.chat{min-height:360px;display:grid;grid-template-rows:1fr auto;gap:12px}.messages{min-height:260px;overflow:auto;display:flex;flex-direction:column;gap:8px;border:1px solid #e3d9c9;border-radius:6px;background:white;padding:12px}.msg{max-width:min(72ch,88%);border-radius:8px;padding:9px 11px;line-height:1.45;overflow-wrap:anywhere}.local{align-self:flex-end;background:#dcebf0}.remote{align-self:flex-start;background:#efe7d8}.system{align-self:center;max-width:100%;background:#f5f1ea;color:#70685d;font-size:13px}.composer{display:flex;gap:8px}.composer input{flex:1}.scanner{position:relative;margin-top:10px;border:1px solid #d8ccba;border-radius:6px;overflow:hidden;background:#111}.scanner video{width:100%;display:block}.reticle{position:absolute;inset:16%;border:3px solid #3ba7bd;border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,.34)}
-@media(max-width:760px){.app{width:min(100% - 18px,920px);padding:14px 0}.grid{grid-template-columns:1fr}.composer{display:grid}button{width:100%}.friend{align-items:stretch}.friend button{width:auto}}
+button{border:0;border-radius:6px;background:#24627a;color:white;font:inherit;font-weight:800;padding:11px 14px;cursor:pointer}button.secondary{background:#706047}button.small{padding:7px 10px;font-size:12px}button:disabled{opacity:.45;cursor:not-allowed}
+textarea,input{width:100%;border:1px solid #c6cbd2;border-radius:6px;background:white;color:#202124;font:inherit;padding:10px}textarea{min-height:96px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;word-break:break-all}
+.status{display:inline-block;border-radius:999px;background:#e7ebef;color:#43505c;padding:7px 11px;font-size:13px;font-weight:900}.status.ok{background:#d9f1df;color:#1d6231}.status.bad{background:#f5d7d1;color:#7a271d}
+.friendsWrap{margin-top:14px}.friends{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:6px}.friend{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid #dfe3e8;border-radius:6px;background:white;padding:8px 10px}.friendInfo{display:grid;gap:2px;min-width:0}.friend strong{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.friend span{font-size:12px;color:#707681;white-space:nowrap}
+.qr{width:fit-content;max-width:100%;background:white;padding:12px;border-radius:6px;margin:12px 0}.qr canvas,.qr img{display:block;max-width:100%;height:auto}.hidden{display:none!important}.muted{color:#6d7280;font-size:13px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.chat{min-height:390px;display:grid;grid-template-rows:1fr auto;gap:12px}.messages{min-height:280px;overflow:auto;display:flex;flex-direction:column;gap:8px;border:1px solid #dfe3e8;border-radius:8px;background:#ffffff;padding:14px}.msg{max-width:min(72ch,88%);border-radius:8px;padding:9px 11px;line-height:1.45;overflow-wrap:anywhere}.local{align-self:flex-end;background:#dcebf0}.remote{align-self:flex-start;background:#f0eadf}.system{align-self:center;max-width:100%;background:#f1f3f5;color:#626b75;font-size:13px}.composer{display:grid;grid-template-columns:1fr auto;gap:8px}.scanner{position:relative;margin-top:10px;border:1px solid #d8ccba;border-radius:6px;overflow:hidden;background:#111}.scanner video{width:100%;display:block}.reticle{position:absolute;inset:16%;border:3px solid #3ba7bd;border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,.34)}
+@media(max-width:760px){.app{width:min(100% - 18px,980px);padding:12px 0 18px}.appHeader{grid-template-columns:1fr}.identity{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.composer{grid-template-columns:1fr}button{width:100%}.friend{align-items:stretch}.friend button{width:auto}}
 </style>
 </head>
 <body>
 <main class="app">
   <section class="panel">
-    <div class="row">
-      <h1>Mesh Messenger MVP</h1>
-      <span id="status" class="status">未接続</span>
+    <div class="appHeader">
+      <div class="titleBlock">
+        <div class="row">
+          <h1>Mesh Messenger MVP</h1>
+          <span id="status" class="status">未接続</span>
+        </div>
+        <div class="metaBar">
+          <span class="meta">Version <span id="appVersion"></span></span>
+          <span class="meta">Signaling <span id="signalingMode">QR交換</span></span>
+        </div>
+      </div>
+      <button class="secondary" id="resetIdentity" type="button">ID再生成</button>
     </div>
-    <p class="muted"><strong>Version:</strong> <span id="appVersion"></span></p>
     <p>対面でQRを交換し、WebRTC DataChannelで直接つなぐ単一HTMLの試作です。本文は送信前にAES-GCMで暗号化します。</p>
     <p class="notice">招待QRはスマホ標準カメラでも試せます。返信QRは、招待側のアプリ内「返信を読む」で読み取ります。</p>
     <p id="runtimeWarning" class="notice hidden"></p>
     <div class="identity">
-      <div class="muted">自分のID</div>
-      <div class="row">
-        <strong id="deviceId"></strong>
-        <button class="secondary" id="resetIdentity" type="button">ID再生成</button>
+      <div class="metric">
+        <span class="metricLabel">自分のID</span>
+        <span class="metricValue" id="deviceId"></span>
       </div>
-      <div class="muted">保存済みの相手: <span id="friendCount">0</span></div>
-      <div class="muted">再接続方式: <span id="signalingMode">QR交換</span></div>
+      <div class="metric">
+        <span class="metricLabel">保存済みの相手</span>
+        <span class="metricValue"><span id="friendCount">0</span> 件</span>
+      </div>
+      <div class="metric">
+        <span class="metricLabel">通信方式</span>
+        <span class="metricValue">WebRTC + AES-GCM</span>
+      </div>
+    </div>
+    <div class="friendsWrap">
+      <div class="muted">保存済みの相手</div>
       <ul id="friendsList" class="friends"></ul>
     </div>
   </section>
@@ -105,7 +121,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 
 <script>
 const MAX_TEXT_LENGTH = 500;
-const APP_VERSION = "2026-06-03.08-signal-dedupe";
+const APP_VERSION = "2026-06-03.09-ui-refresh";
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDqEILuABkK0m79iy80Uu_z2W_TbJqT-uU",
@@ -586,6 +602,13 @@ function updateFriendCount(){
   const friends = getFriends();
   els.friendCount.textContent = String(friends.length);
   els.friendsList.innerHTML = "";
+  if (!friends.length) {
+    const empty = document.createElement("li");
+    empty.className = "friend";
+    empty.textContent = "まだ保存済みの相手はいません。";
+    els.friendsList.append(empty);
+    return;
+  }
   const sorted = [...friends].sort((a, b) => (b.lastConnectedAt || 0) - (a.lastConnectedAt || 0));
   sorted.forEach((friend) => {
     const item = document.createElement("li");

@@ -23,7 +23,7 @@ Working app version:
 Current local app version:
 
 ```txt
-2026-06-03.08-signal-dedupe
+2026-06-03.09-ui-refresh
 ```
 
 Current URL:
@@ -129,6 +129,7 @@ Done:
 8. Delete processed and expired Firebase signal documents from the receiving client.
 9. Keep Firebase delete permission failures from repeating as signal processing failures.
 10. Persist seen Firebase signal IDs locally so old undeleted signals do not reprocess after reload.
+11. Refresh the main UI layout for clearer status, identity, friend list, and chat surfaces.
 
 Next:
 
