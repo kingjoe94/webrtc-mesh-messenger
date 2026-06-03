@@ -23,7 +23,7 @@ Working app version:
 Current local app version:
 
 ```txt
-2026-06-03.06-signal-cleanup
+2026-06-03.07-cleanup-errors
 ```
 
 Current URL:
@@ -127,6 +127,7 @@ Done:
 6. Route saved-friend reconnect offer and answer through Firebase.
 7. Confirm Firebase reconnect works between already paired devices.
 8. Delete processed and expired Firebase signal documents from the receiving client.
+9. Keep Firebase delete permission failures from repeating as signal processing failures.
 
 Next:
 

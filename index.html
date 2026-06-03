@@ -105,7 +105,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 
 <script>
 const MAX_TEXT_LENGTH = 500;
-const APP_VERSION = "2026-06-03.06-signal-cleanup";
+const APP_VERSION = "2026-06-03.07-cleanup-errors";
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDqEILuABkK0m79iy80Uu_z2W_TbJqT-uU",
@@ -299,6 +299,7 @@ class FirebaseSignalingProvider {
     this.label = "Firebase";
     this.supportsRemoteReconnect = true;
     this.unsubscribe = null;
+    this.seenSignalIds = new Set();
     this.onSignalCallback = () => {};
   }
   async connect(){
@@ -314,6 +315,8 @@ class FirebaseSignalingProvider {
     this.unsubscribe = firestoreModule.onSnapshot(this.inboxRef, (snapshot) => {
       snapshot.docChanges().forEach((change) => {
         if (change.type !== "added") return;
+        if (this.seenSignalIds.has(change.doc.id)) return;
+        this.seenSignalIds.add(change.doc.id);
         const signal = change.doc.data();
         if (signal.to !== this.identity.deviceId) return;
         this.onSignalCallback(signal, change.doc.ref);
@@ -374,7 +377,7 @@ class ManualQrSignalingProvider {
 async function handleProviderSignal(signal, signalRef){
   try{
     if (isExpiredSignal(signal)) {
-      await signalingProvider.deleteSignal(signalRef);
+      await cleanupProviderSignal(signalRef);
       return;
     }
     if (signal.kind === "offer") {
@@ -382,9 +385,17 @@ async function handleProviderSignal(signal, signalRef){
     } else if (signal.kind === "answer") {
       await acceptProviderAnswer(signal);
     }
-    await signalingProvider.deleteSignal(signalRef);
+    await cleanupProviderSignal(signalRef);
   }catch(error){
     addMessage("system",`Firebaseシグナルを処理できません: ${error.message}`);
+  }
+}
+
+async function cleanupProviderSignal(signalRef){
+  try{
+    await signalingProvider.deleteSignal(signalRef);
+  }catch(error){
+    addMessage("system",`Firebaseシグナルを削除できません: ${error.message}`);
   }
 }
 
