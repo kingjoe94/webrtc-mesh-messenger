@@ -23,7 +23,7 @@ Working app version:
 Current local app version:
 
 ```txt
-2026-06-03.10-simple-ui
+2026-06-03.11-hide-reset-id
 ```
 
 Current URL:
@@ -131,6 +131,7 @@ Done:
 10. Persist seen Firebase signal IDs locally so old undeleted signals do not reprocess after reload.
 11. Refresh the main UI layout for clearer status, identity, friend list, and chat surfaces.
 12. Simplify first-screen copy and hide developer-oriented version details from the main UI.
+13. Hide manual identity reset from the main UI; identity is regenerated automatically if local storage is cleared.
 
 Next:
 

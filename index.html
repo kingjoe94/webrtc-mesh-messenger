@@ -32,7 +32,6 @@ textarea,input{width:100%;border:1px solid #c6cbd2;border-radius:6px;background:
           <span class="meta">再接続 <span id="signalingMode">QR交換</span></span>
         </div>
       </div>
-      <button class="secondary" id="resetIdentity" type="button">ID再生成</button>
     </div>
     <p>近くにいる相手とQRでつなぎ、短いメッセージを直接送ります。</p>
     <p id="runtimeWarning" class="notice hidden"></p>
@@ -114,7 +113,7 @@ textarea,input{width:100%;border:1px solid #c6cbd2;border-radius:6px;background:
 
 <script>
 const MAX_TEXT_LENGTH = 500;
-const APP_VERSION = "2026-06-03.10-simple-ui";
+const APP_VERSION = "2026-06-03.11-hide-reset-id";
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDqEILuABkK0m79iy80Uu_z2W_TbJqT-uU",
@@ -197,11 +196,6 @@ $("guestStart").onclick = startGuest;
 $("hostScanAnswer").onclick = () => { show("hostAnswerPanel"); startScanner("hostScanner", hostAccept); };
 $("hostAcceptAnswer").onclick = () => hostAccept($("hostAnswerPaste").value);
 $("guestAcceptOffer").onclick = () => guestAccept($("guestOfferPaste").value);
-$("resetIdentity").onclick = async () => {
-  if (!confirm("この端末のIDと鍵を再生成します。既存の友達登録とは別IDになります。")) return;
-  localStorage.removeItem("mesh-messenger:identity");
-  location.reload();
-};
 document.querySelectorAll("[data-copy]").forEach((button) => {
   button.onclick = async () => {
     const target = $(button.dataset.copy);
