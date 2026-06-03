@@ -11,11 +11,12 @@
 *{box-sizing:border-box}body{margin:0}.app{width:min(920px,calc(100% - 28px));margin:0 auto;padding:28px 0}.panel{background:#fffaf2;border:1px solid #ded5c4;border-radius:8px;padding:18px;box-shadow:0 12px 34px rgba(68,53,30,.1)}.panel+.panel{margin-top:14px}
 h1{margin:0;font-size:28px;letter-spacing:0}h2{margin:0 0 8px;font-size:20px;letter-spacing:0}p{margin:8px 0 0;color:#635d52;line-height:1.55}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
 .notice{border:1px solid #d8c3a4;border-radius:6px;background:#fff2d8;color:#634717;padding:10px 12px;font-weight:700}
-button{border:0;border-radius:6px;background:#245c74;color:white;font:inherit;font-weight:800;padding:11px 14px;cursor:pointer}button.secondary{background:#74624a}button:disabled{opacity:.45;cursor:not-allowed}
+button{border:0;border-radius:6px;background:#245c74;color:white;font:inherit;font-weight:800;padding:11px 14px;cursor:pointer}button.secondary{background:#74624a}button.small{padding:7px 10px;font-size:12px}button:disabled{opacity:.45;cursor:not-allowed}
 textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:white;color:#202124;font:inherit;padding:10px}textarea{min-height:96px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;word-break:break-all}
 .status{display:inline-block;border-radius:999px;background:#eee3d0;color:#57462f;padding:6px 10px;font-size:13px;font-weight:800}.status.ok{background:#d8f0dd;color:#215c32}.status.bad{background:#f5d7d1;color:#7a271d}
+.friends{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:6px}.friend{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid #e2d8c7;border-radius:6px;background:white;padding:8px 10px}.friendInfo{display:grid;gap:2px}.friend strong{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}.friend span{font-size:12px;color:#746f66;white-space:nowrap}
 .qr{width:fit-content;max-width:100%;background:white;padding:12px;border-radius:6px;margin:12px 0}.qr canvas,.qr img{display:block;max-width:100%;height:auto}.hidden{display:none!important}.muted{color:#746f66;font-size:13px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.identity{margin-top:12px;padding:12px;border:1px solid #e2d8c7;border-radius:6px;background:#fbf4e8}.chat{min-height:360px;display:grid;grid-template-rows:1fr auto;gap:12px}.messages{min-height:260px;overflow:auto;display:flex;flex-direction:column;gap:8px;border:1px solid #e3d9c9;border-radius:6px;background:white;padding:12px}.msg{max-width:min(72ch,88%);border-radius:8px;padding:9px 11px;line-height:1.45;overflow-wrap:anywhere}.local{align-self:flex-end;background:#dcebf0}.remote{align-self:flex-start;background:#efe7d8}.system{align-self:center;max-width:100%;background:#f5f1ea;color:#70685d;font-size:13px}.composer{display:flex;gap:8px}.composer input{flex:1}.scanner{position:relative;margin-top:10px;border:1px solid #d8ccba;border-radius:6px;overflow:hidden;background:#111}.scanner video{width:100%;display:block}.reticle{position:absolute;inset:16%;border:3px solid #3ba7bd;border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,.34)}
-@media(max-width:760px){.app{width:min(100% - 18px,920px);padding:14px 0}.grid{grid-template-columns:1fr}.composer{display:grid}button{width:100%}}
+@media(max-width:760px){.app{width:min(100% - 18px,920px);padding:14px 0}.grid{grid-template-columns:1fr}.composer{display:grid}button{width:100%}.friend{align-items:stretch}.friend button{width:auto}}
 </style>
 </head>
 <body>
@@ -36,6 +37,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
         <button class="secondary" id="resetIdentity" type="button">ID再生成</button>
       </div>
       <div class="muted">保存済みの相手: <span id="friendCount">0</span></div>
+      <ul id="friendsList" class="friends"></ul>
     </div>
   </section>
 
@@ -102,14 +104,14 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 
 <script>
 const MAX_TEXT_LENGTH = 500;
-const APP_VERSION = "2026-06-02.11-save-paired-friends";
+const APP_VERSION = "2026-06-03.02-manual-reconnect";
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const $ = (id) => document.getElementById(id);
 const views = ["startPanel","hostOfferPanel","hostAnswerPanel","guestOfferPanel","guestAnswerPanel"];
-let pc, channel, role, identity, peerPublicJwk, sharedKey, scanStream, scanRAF;
+let pc, channel, role, identity, peerPublicJwk, sharedKey, scanStream, scanRAF, expectedFriendId;
 
 const els = {
-  status: $("status"), deviceId: $("deviceId"), friendCount: $("friendCount"), messages: $("messages"),
+  status: $("status"), deviceId: $("deviceId"), friendCount: $("friendCount"), friendsList: $("friendsList"), messages: $("messages"),
   input: $("messageInput"), send: $("sendMessage"), form: $("messageForm")
 };
 
@@ -218,6 +220,7 @@ async function shortHash(text){
 
 async function startHost(){
   role = "host";
+  expectedFriendId = null;
   createPeer(true);
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
@@ -226,6 +229,25 @@ async function startHost(){
   $("hostCode").value = code;
   makeQr("hostQr", makeOfferUrl(code));
   show("hostOfferPanel");
+}
+
+async function startReconnect(friendId){
+  const friend = getFriends().find((item) => item.friendId === friendId);
+  if (!friend) return addMessage("system","保存済みの相手が見つかりません。");
+  role = "host";
+  expectedFriendId = friend.friendId;
+  createPeer(true);
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  await waitForIce();
+  const code = await pack({
+    v:1, kind:"offer", mode:"reconnect", reconnectTo:friend.friendId,
+    deviceId:identity.deviceId, publicJwk:identity.publicJwk, sdp:pc.localDescription
+  });
+  $("hostCode").value = code;
+  makeQr("hostQr", makeOfferUrl(code));
+  show("hostOfferPanel");
+  addMessage("system",`${friend.friendId} への再接続QRを作成しました。相手に読み取ってもらってください。`);
 }
 
 function startGuest(){
@@ -245,6 +267,11 @@ async function guestAccept(raw){
     const offer = await unpack(raw);
     stopScanner();
     if (offer.kind !== "offer") throw new Error("招待コードではありません。");
+    if (offer.reconnectTo && offer.reconnectTo !== identity.deviceId) throw new Error("この端末宛ての再接続コードではありません。");
+    const offerFriendId = await shortHash(JSON.stringify(offer.publicJwk));
+    if (offer.mode === "reconnect" && !getFriends().some((friend) => friend.friendId === offerFriendId)) {
+      throw new Error("保存済みではない相手からの再接続コードです。");
+    }
     peerPublicJwk = offer.publicJwk;
     createPeer(false);
     await pc.setRemoteDescription(offer.sdp);
@@ -272,6 +299,8 @@ async function hostAccept(raw){
     const answer = await unpack(raw);
     stopScanner();
     if (answer.kind !== "answer") throw new Error("返信コードではありません。");
+    const answerFriendId = await shortHash(JSON.stringify(answer.publicJwk));
+    if (expectedFriendId && answerFriendId !== expectedFriendId) throw new Error("選択した相手とは別の返信コードです。");
     peerPublicJwk = answer.publicJwk;
     await pc.setRemoteDescription(answer.sdp);
     await deriveSharedKey(peerPublicJwk);
@@ -334,7 +363,7 @@ function wireChannel(next){
 async function saveFriend(publicJwk){
   const friendId = await shortHash(JSON.stringify(publicJwk));
   const key = "mesh-messenger:friends";
-  const friends = JSON.parse(localStorage.getItem(key) || "[]");
+  const friends = getFriends();
   const now = Date.now();
   const existing = friends.find((friend) => friend.friendId === friendId);
   if (existing) {
@@ -348,9 +377,40 @@ async function saveFriend(publicJwk){
   updateFriendCount();
 }
 
+function getFriends(){
+  return JSON.parse(localStorage.getItem("mesh-messenger:friends") || "[]");
+}
+
 function updateFriendCount(){
-  const friends = JSON.parse(localStorage.getItem("mesh-messenger:friends") || "[]");
+  const friends = getFriends();
   els.friendCount.textContent = String(friends.length);
+  els.friendsList.innerHTML = "";
+  const sorted = [...friends].sort((a, b) => (b.lastConnectedAt || 0) - (a.lastConnectedAt || 0));
+  sorted.forEach((friend) => {
+    const item = document.createElement("li");
+    item.className = "friend";
+    const info = document.createElement("div");
+    info.className = "friendInfo";
+    const id = document.createElement("strong");
+    id.textContent = friend.friendId;
+    const last = document.createElement("span");
+    last.textContent = formatTime(friend.lastConnectedAt || friend.pairedAt);
+    const reconnect = document.createElement("button");
+    reconnect.type = "button";
+    reconnect.className = "small secondary";
+    reconnect.textContent = "再接続";
+    reconnect.onclick = () => startReconnect(friend.friendId);
+    info.append(id, last);
+    item.append(info, reconnect);
+    els.friendsList.append(item);
+  });
+}
+
+function formatTime(value){
+  if (!value) return "未接続";
+  return new Intl.DateTimeFormat("ja-JP", {
+    month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit"
+  }).format(new Date(value));
 }
 
 async function deriveSharedKey(publicJwk){

@@ -20,6 +20,12 @@ Working app version:
 2026-06-02.10-camera-offer-url
 ```
 
+Current local app version:
+
+```txt
+2026-06-03.02-manual-reconnect
+```
+
 Current URL:
 
 ```txt
@@ -111,13 +117,18 @@ The provider should not handle:
 
 ## Next Implementation Order
 
+Done:
+
 1. Save paired friend records after the two-way QR exchange succeeds.
 2. Show a simple friend list from local storage.
-3. Allow manual reconnect to a saved friend.
-4. Add a `SignalingProvider` abstraction.
-5. Add a minimal provider for already paired friends only.
-6. On reload, restore identity and friend list.
-7. Attempt reconnect only when both sides are open and already paired.
+3. Allow manual reconnect to a saved friend through a targeted QR offer.
+
+Next:
+
+1. Add a `SignalingProvider` abstraction.
+2. Add a minimal provider for already paired friends only.
+3. On reload, restore identity and friend list.
+4. Attempt reconnect only when both sides are open and already paired.
 
 Friend record draft:
 
