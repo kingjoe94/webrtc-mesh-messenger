@@ -76,4 +76,4 @@ TTL cleanup is not immediate, so the app must still ignore expired signaling dat
 
 ## Current Limit
 
-This is only the Firebase configuration and provider shell. The next step is to route saved-friend reconnect offer, answer, and ICE exchange through the provider.
+Firebase reconnect currently sends complete offer/answer SDP after ICE gathering. It does not yet send separate trickle ICE candidate messages.

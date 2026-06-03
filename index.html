@@ -105,7 +105,7 @@ textarea,input{width:100%;border:1px solid #cabfae;border-radius:6px;background:
 
 <script>
 const MAX_TEXT_LENGTH = 500;
-const APP_VERSION = "2026-06-03.04-firebase-config";
+const APP_VERSION = "2026-06-03.05-firebase-reconnect";
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDqEILuABkK0m79iy80Uu_z2W_TbJqT-uU",
@@ -143,6 +143,7 @@ async function init(){
     signalingProvider = createSignalingProvider(identity);
     els.signalingMode.textContent = signalingProvider.label;
     await signalingProvider.connect();
+    signalingProvider.onSignal(handleProviderSignal);
     updateFriendCount();
     els.send.disabled = true;
     addMessage("system","まだ接続されていません。対面でQRを交換してください。");
@@ -254,8 +255,19 @@ async function startReconnect(friendId){
 }
 
 async function startProviderReconnect(friend){
-  addMessage("system",`${signalingProvider.label} で ${friend.friendId} への再接続を開始します。`);
-  await signalingProvider.sendSignal(friend.friendId, { kind:"reconnect-request", from:identity.deviceId, createdAt:Date.now() });
+  role = "host";
+  expectedFriendId = friend.friendId;
+  peerPublicJwk = friend.publicJwk;
+  createPeer(true);
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  await waitForIce();
+  await signalingProvider.sendSignal(friend.friendId, {
+    kind:"offer",
+    mode:"reconnect",
+    sdp:pc.localDescription
+  });
+  addMessage("system",`${signalingProvider.label} で ${friend.friendId} に再接続リクエストを送りました。相手の応答を待っています。`);
 }
 
 async function startQrReconnect(friend){
@@ -352,6 +364,58 @@ class ManualQrSignalingProvider {
     return () => {};
   }
   disconnect(){}
+}
+
+async function handleProviderSignal(signal){
+  try{
+    if (isExpiredSignal(signal)) return;
+    if (signal.kind === "offer") {
+      await acceptProviderOffer(signal);
+      return;
+    }
+    if (signal.kind === "answer") {
+      await acceptProviderAnswer(signal);
+    }
+  }catch(error){
+    addMessage("system",`Firebaseシグナルを処理できません: ${error.message}`);
+  }
+}
+
+async function acceptProviderOffer(signal){
+  if (signal.mode !== "reconnect") throw new Error("未対応のFirebase offerです。");
+  const friend = getFriends().find((item) => item.friendId === signal.from);
+  if (!friend) throw new Error("保存済みではない相手からの再接続です。");
+  role = "guest";
+  expectedFriendId = signal.from;
+  peerPublicJwk = friend.publicJwk;
+  createPeer(false);
+  await pc.setRemoteDescription(signal.sdp);
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  await waitForIce();
+  await deriveSharedKey(peerPublicJwk);
+  await signalingProvider.sendSignal(friend.friendId, {
+    kind:"answer",
+    mode:"reconnect",
+    sdp:pc.localDescription
+  });
+  addMessage("system",`${friend.friendId} からのFirebase再接続に応答しました。`);
+}
+
+async function acceptProviderAnswer(signal){
+  if (signal.mode !== "reconnect") throw new Error("未対応のFirebase answerです。");
+  if (!expectedFriendId || signal.from !== expectedFriendId) throw new Error("選択した相手とは別のFirebase answerです。");
+  const friend = getFriends().find((item) => item.friendId === signal.from);
+  if (!friend) throw new Error("保存済みではない相手からの返信です。");
+  peerPublicJwk = friend.publicJwk;
+  await pc.setRemoteDescription(signal.sdp);
+  await deriveSharedKey(peerPublicJwk);
+  addMessage("system",`${friend.friendId} のFirebase返信を読み込みました。接続を確立しています。`);
+}
+
+function isExpiredSignal(signal){
+  const expiresAt = signal.expiresAt?.toMillis?.() || 0;
+  return expiresAt && expiresAt <= Date.now();
 }
 
 function startGuest(){

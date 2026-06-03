@@ -23,7 +23,7 @@ Working app version:
 Current local app version:
 
 ```txt
-2026-06-03.04-firebase-config
+2026-06-03.05-firebase-reconnect
 ```
 
 Current URL:
@@ -124,11 +124,12 @@ Done:
 3. Allow manual reconnect to a saved friend through a targeted QR offer.
 4. Add a `SignalingProvider` abstraction with the current QR exchange flow as the default provider.
 5. Add Firebase provider configuration shell and setup notes.
+6. Route saved-friend reconnect offer and answer through Firebase.
 
 Next:
 
-1. Fill `FIREBASE_CONFIG` from the Firebase web app settings.
-2. Route saved-friend reconnect offer, answer, and ICE exchange through Firebase.
+1. Test Firebase reconnect with two already paired devices.
+2. Add separate ICE candidate exchange if complete-SDP reconnect is unreliable.
 3. On reload, restore identity and friend list.
 4. Attempt reconnect only when both sides are open and already paired.
 
